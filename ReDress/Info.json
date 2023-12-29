@@ -1,0 +1,12 @@
+﻿{
+  "Id": "ReDress",
+  "DisplayName": "Redress Character",
+  "Author": "ADDB",
+  "Version": "0.1.0",
+  "ManagerVersion": "0.25.0",
+  "Requirements": [],
+  "AssemblyName": "ReDress.dll",
+  "EntryMethod": "ReDress.Main.Load",
+  "HomePage": "",
+  "Repository": ""
+}
