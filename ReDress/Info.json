@@ -2,7 +2,7 @@
   "Id": "ReDress",
   "DisplayName": "Redress Character",
   "Author": "ADDB",
-  "Version": "0.1.0",
+  "Version": "0.1.1",
   "ManagerVersion": "0.25.0",
   "Requirements": [],
   "AssemblyName": "ReDress.dll",
