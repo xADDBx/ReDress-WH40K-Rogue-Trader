@@ -71,9 +71,9 @@ static class Main {
                             try {
                                 isInRoom = false;
                                 // pregenPath.Components[1] = cachedComponent;
-                                Game.Instance.Player.MainCharacterEntity.ViewSettings.SetDoll(newCompanion.ViewSettings.Doll);
+                                charac.ViewSettings.SetDoll(newCompanion.ViewSettings.Doll);
                                 var newKmm = newCompanion.Facts.m_Facts.First(f => f.Blueprint.name.Contains("Occupation"))?.GetComponent<AddKingmakerEquipmentEntity>();
-                                var oldKmm = Game.Instance.Player.MainCharacterEntity.Facts.m_Facts.First(f => f.Blueprint.name.Contains("Occupation"))?.GetComponent<AddKingmakerEquipmentEntity>();
+                                var oldKmm = charac.Facts.m_Facts.First(f => f.Blueprint.name.Contains("Occupation"))?.GetComponent<AddKingmakerEquipmentEntity>();
                                 if (newKmm != null && oldKmm != null) {
                                     oldKmm.m_EquipmentEntity = newKmm.m_EquipmentEntity;
                                 }
