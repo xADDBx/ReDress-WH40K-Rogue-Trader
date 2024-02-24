@@ -1,18 +1,16 @@
 [h1]Redress Character[/h1]
 Allows changing the (at character generation) chosen cosmetic options.
-Also allows selecting clothes from a different origin.
+Now also properly allows changing outfits to ones of different origin.
 
 [h2]Usage[/h2]
-Because the mod is new, stuff is still rough. It works by doing a Character Creation. While you have to complete the character creation, everything besides visual options and origin clothes is ignored.
+To change the appeareance you will have to go through character creation. In there, [b]everything other than visual options are ignored[/b].
 To use:
 [olist]
 [*]Click the button in Redress mod section of the UnityModManager GUI.
-[*]Go throguh character creation. Pick the cosmetic options you want and the Origin of which you want the clothes (Portrait and Voice aren't changeable; use ToyBox for that).
+[*][b]There should be a small toggle at the top of the section. Activating that brings up a small explantion on how to use the mod.[/b]
 [*]After finishing, you need to Save and Reload for the changes to take effect.
 [/olist]
 
 
 [h2]Installation[/h2]
 Installation is similar to [url=https://github.com/cabarius/ToyBox/wiki/Installing-Toybox-for-RT-(Steam-Workshop-Edition)] how it's done with ToyBox[/url].
-
-While I did say it's an early version, I still have to see whether I will do additional development for the mod.
