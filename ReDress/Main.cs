@@ -266,19 +266,20 @@ static class Main {
         }
     }
     [HarmonyPatch(typeof(Character), nameof(Character.AddEquipmentEntity), new Type[] { typeof(EquipmentEntity), typeof(bool) })]
-    public static class A {
+    public static class Character_AddEquipmentEntity_Patch {
         [HarmonyPrefix]
-        public static bool B(Character __instance, EquipmentEntity ee) {
+        public static bool AddEquipmentEntity(Character __instance, EquipmentEntity ee) {
             try {
                 if (EntityPartStorage.perSave.AddClothes.TryGetValue(__instance.GetComponent<UnitEntityView>().UniqueId, out var ids)) {
                     if (cachedLinks.Contains(ee)) return false;
                     if (EntityPartStorage.perSave.ExcludeByName.TryGetValue(__instance.GetComponent<UnitEntityView>().UniqueId, out var excludes)) {
                         if (excludes.Contains(ee.name)) return false;
                     }
-                    log.Log(new System.Diagnostics.StackTrace().ToString());
                 }
             }
-            catch (Exception) { }
+            catch (Exception e) {
+                log.Log(e.ToString());
+            }
             return true;
         }
     }
