@@ -1,12 +1,12 @@
 {
   "UniqueName": "ReDress",
-  "Version": "0.2.0",
+  "Version": "0.3.0",
   "DisplayName": "Redress Character",
   "Description": "Redress Character",
   "Author": "ADDB",
   "ImageName": "Thumbnail.jpg",
   "WorkshopId": "3125582880",
-  "Repository": "",
-  "HomePage": "",
+  "Repository": "https://raw.githubusercontent.com/xADDBx/ReDress-WH40K-Rogue-Trader/master/Repository.json",
+  "HomePage": "https://www.nexusmods.com/warhammer40kroguetrader/mods/104",
   "Dependencies": []
 }

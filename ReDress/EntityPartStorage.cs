@@ -18,6 +18,10 @@ namespace ReDress {
             public Dictionary<string, List<string>> AddClothes = new();
             [JsonProperty]
             public Dictionary<string, HashSet<string>> ExcludeByName = new();
+            [JsonProperty]
+            public Dictionary<string, HashSet<string>> IncludeByName = new();
+            [JsonProperty]
+            public Dictionary<string, bool> NakedFlag = new();
         }
         private static PerSaveSettings cachedPerSave = null;
         public static void ClearCachedPerSave() => cachedPerSave = null;

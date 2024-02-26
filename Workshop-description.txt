@@ -1,6 +1,7 @@
 [h1]Redress Character[/h1]
 Allows changing the (at character generation) chosen cosmetic options.
 Now also properly allows changing outfits to ones of different origin.
+From now on also allows picking different outfit parts in the game to create your own outfit.
 
 [h2]Usage[/h2]
 To change the appeareance you will have to go through character creation. In there, [b]everything other than visual options are ignored[/b].
