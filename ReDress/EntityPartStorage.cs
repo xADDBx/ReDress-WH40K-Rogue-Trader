@@ -31,8 +31,8 @@ namespace ReDress {
             if (Game.Instance.State.InGameSettings.List.TryGetValue(PerSaveSettings.ID, out var obj) && obj is string json) {
                 try {
                     cachedPerSave = JsonConvert.DeserializeObject<PerSaveSettings>(json);
-                }
-                catch (Exception) {
+                } catch (Exception e) {
+                    log.Log(e.ToString());
                 }
             }
             if (cachedPerSave == null) {
@@ -43,8 +43,7 @@ namespace ReDress {
         public static void SavePerSaveSettings() {
             var player = Game.Instance?.Player;
             if (player == null) return;
-            if (cachedPerSave == null)
-                ReloadPerSaveSettings();
+            if (cachedPerSave == null) ReloadPerSaveSettings();
             var json = JsonConvert.SerializeObject(cachedPerSave);
             Game.Instance.State.InGameSettings.List[PerSaveSettings.ID] = json;
         }
@@ -53,8 +52,9 @@ namespace ReDress {
                 try {
                     if (cachedPerSave != null) return cachedPerSave;
                     ReloadPerSaveSettings();
+                } catch (Exception e) {
+                    log.Log(e.ToString());
                 }
-                catch (Exception) { }
                 return cachedPerSave;
             }
         }

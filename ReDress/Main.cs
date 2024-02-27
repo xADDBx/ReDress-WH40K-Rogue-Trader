@@ -20,6 +20,8 @@ using System.Xml.Linq;
 using static UnityModManagerNet.UnityModManager;
 using Kingmaker.GameInfo;
 using UnityEngine.UIElements;
+using Kingmaker.Blueprints.Area;
+using Kingmaker.EntitySystem.Persistence;
 
 namespace ReDress;
 
@@ -181,6 +183,7 @@ static class Main {
                     if (openedExclude) {
                         if (GUILayout.Button("Reset Excludes", GUILayout.ExpandWidth(false))) {
                             EntityPartStorage.perSave.ExcludeByName.Remove(choosen.UniqueId);
+                            EntityPartStorage.SavePerSaveSettings();
                         }
                         foreach (var ee in choosen.View.CharacterAvatar.EquipmentEntities) {
                             using (new GUILayout.HorizontalScope()) {
@@ -226,6 +229,7 @@ static class Main {
                     if (openedInclude) {
                         if (GUILayout.Button("Reset Includes", GUILayout.ExpandWidth(false))) {
                             EntityPartStorage.perSave.IncludeByName.Remove(choosen.UniqueId);
+                            EntityPartStorage.SavePerSaveSettings();
                         }
                         EntityPartStorage.perSave.IncludeByName.TryGetValue(choosen.UniqueId, out var currentIncludes);
                         includeBrowser.OnGUI(settings.AssetIds, s => s, s => $"{s.Item2} {s.Item1}", s => new[] { s.Item2, s.Item1 }, (pair1, pair2) => {
@@ -388,12 +392,22 @@ static class Main {
             return true;
         }
     }
-    [HarmonyPatch(typeof(Game), nameof(Game.LoadGame))]
-    internal static class Game_LoadGame_Patch {
+    [HarmonyPatch(typeof(Game))]
+    internal static class Game_Patch {
+        private static bool isLoadGame = false;
+        [HarmonyPatch(nameof(Game.LoadGameForce))]
         [HarmonyPrefix]
-        private static void LoadGame() {
+        private static void LoadGameForce() {
+            isLoadGame = true;
+        }
+        [HarmonyPatch(nameof(Game.LoadArea), new Type[] { typeof(BlueprintArea), typeof(BlueprintAreaEnterPoint), typeof(AutoSaveMode), typeof(SaveInfo), typeof(Action) })]
+        [HarmonyPrefix]
+        private static void LoadArea() {
             EntityPartStorage.ClearCachedPerSave();
-            cachedLinks.Clear();
+            if (isLoadGame) {
+                cachedLinks.Clear();
+                isLoadGame = false;
+            }
         }
     }
     public static string ToDescriptionString(this Outfit val) {
