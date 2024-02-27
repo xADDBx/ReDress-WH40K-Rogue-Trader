@@ -5,7 +5,7 @@
 		<TargetFramework>net472</TargetFramework>
 		<AssemblyName>ReDress</AssemblyName>
 		<Description>Redress Character</Description>
-		<Version>0.3.1</Version>
+		<Version>0.3.2</Version>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<LangVersion>latest</LangVersion>
 		<RootNamespace>ReDress</RootNamespace>

@@ -185,7 +185,7 @@ static class Main {
                             EntityPartStorage.perSave.ExcludeByName.Remove(choosen.UniqueId);
                             EntityPartStorage.SavePerSaveSettings();
                         }
-                        foreach (var ee in choosen.View.CharacterAvatar.EquipmentEntities) {
+                        foreach (var ee in choosen.View.CharacterAvatar.EquipmentEntities.Union(choosen.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
                             using (new GUILayout.HorizontalScope()) {
                                 if (GUILayout.Button("Exclude", GUILayout.ExpandWidth(false))) {
                                     EntityPartStorage.perSave.ExcludeByName.TryGetValue(choosen.UniqueId, out var tmpExcludes);
@@ -194,7 +194,7 @@ static class Main {
                                     EntityPartStorage.perSave.ExcludeByName[choosen.UniqueId] = tmpExcludes;
                                     EntityPartStorage.SavePerSaveSettings();
                                 }
-                                GUILayout.Label($"    {ee.name}");
+                                GUILayout.Label($"    {ee?.name ?? "Null????????????"}");
                             }
                         }
                         GUILayout.Label("------------------------------------------");
@@ -262,7 +262,7 @@ static class Main {
                                         EntityPartStorage.perSave.IncludeByName[choosen.UniqueId] = tmpIncludes;
                                         EntityPartStorage.SavePerSaveSettings();
                                     }
-                                    GUILayout.Label($"    {eeName}");
+                                    GUILayout.TextArea($"    {eeName}", GUILayout.ExpandWidth(false));
                                 }
                             }
                         }
