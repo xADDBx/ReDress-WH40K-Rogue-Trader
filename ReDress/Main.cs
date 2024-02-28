@@ -22,6 +22,8 @@ using Kingmaker.GameInfo;
 using UnityEngine.UIElements;
 using Kingmaker.Blueprints.Area;
 using Kingmaker.EntitySystem.Persistence;
+using Microsoft.SqlServer.Server;
+using Owlcat.Runtime.Core;
 
 namespace ReDress;
 
@@ -64,17 +66,28 @@ static class Main {
     internal static bool shouldOpenExclude = false;
     internal static bool openedInclude = false;
     internal static bool shouldOpenInclude = false;
+    internal static bool openedColorPicker = false;
+    internal static string colorPickerItem = "";
+    internal static bool shouldOpenColorPicker = false;
+    internal static bool colorPickerIsPrimary = false;
+    internal static Color ColorPicker;
     internal static Browser<(string, string), (string, string)> includeBrowser = new(true);
     static void OnHideGUI(UnityModManager.ModEntry modEntry) {
         choosen = null;
+        openedGuide = false;
+        openedExclude = false;
+        openedInclude = false;
+        openedColorPicker = false;
+        colorPickerItem = "";
+        boxStyleCache.Clear();
+        buttonStyleCache.Clear();
         selectedOutfit = Outfit.Current;
     }
     static void OnGUI(UnityModManager.ModEntry modEntry) {
         if (Event.current.type == EventType.Layout && (error != null || shouldResetError)) {
             if (!shouldResetError) {
                 printError = true;
-            }
-            else {
+            } else {
                 printError = false;
                 error = null;
                 shouldResetError = false;
@@ -85,8 +98,7 @@ static class Main {
             if (GUILayout.Button("Reset Error")) {
                 shouldResetError = true;
             }
-        }
-        else {
+        } else {
             try {
                 shouldOpenGuide = GUILayout.Toggle(shouldOpenGuide, "Show Guide", GUILayout.ExpandWidth(false));
                 if (Event.current.type == EventType.Layout) {
@@ -229,6 +241,8 @@ static class Main {
                     if (openedInclude) {
                         if (GUILayout.Button("Reset Includes", GUILayout.ExpandWidth(false))) {
                             EntityPartStorage.perSave.IncludeByName.Remove(choosen.UniqueId);
+                            EntityPartStorage.perSave.PrimaryColorOverrides.Remove(choosen.UniqueId);
+                            EntityPartStorage.perSave.SecondaryColorOverrides.Remove(choosen.UniqueId);
                             EntityPartStorage.SavePerSaveSettings();
                         }
                         EntityPartStorage.perSave.IncludeByName.TryGetValue(choosen.UniqueId, out var currentIncludes);
@@ -252,24 +266,141 @@ static class Main {
                         GUILayout.Label("------------------------------------------");
                         GUILayout.Label("Current Includes:");
                         EntityPartStorage.perSave.IncludeByName.TryGetValue(choosen.UniqueId, out currentIncludes);
+                        EntityPartStorage.perSave.PrimaryColorOverrides.TryGetValue(choosen.UniqueId, out var PrimaryColorOverrides);
+                        EntityPartStorage.perSave.SecondaryColorOverrides.TryGetValue(choosen.UniqueId, out var SecondaryColorOverrides);
                         if (currentIncludes?.Count > 0) {
                             foreach (var eeName in currentIncludes.ToList()) {
+                                (float, float, float) pO = default;
+                                bool primaryExists = false;
+                                (float, float, float) sO = default;
+                                bool secondaryExists = false;
                                 using (new GUILayout.HorizontalScope()) {
                                     if (GUILayout.Button("Remove Inclusion", GUILayout.ExpandWidth(false))) {
                                         EntityPartStorage.perSave.IncludeByName.TryGetValue(choosen.UniqueId, out var tmpIncludes);
+                                        EntityPartStorage.perSave.PrimaryColorOverrides.TryGetValue(choosen.UniqueId, out var tmpPrimaryColorOverrides);
+                                        EntityPartStorage.perSave.SecondaryColorOverrides.TryGetValue(choosen.UniqueId, out var tmpSecondaryColorOverrides);
+                                        if (tmpPrimaryColorOverrides != null) {
+                                            tmpPrimaryColorOverrides.Remove(eeName);
+                                        }
+                                        if (tmpSecondaryColorOverrides != null) {
+                                            tmpSecondaryColorOverrides.Remove(eeName);
+                                        }
                                         if (tmpIncludes == null) tmpIncludes = new();
                                         tmpIncludes.Remove(eeName);
                                         EntityPartStorage.perSave.IncludeByName[choosen.UniqueId] = tmpIncludes;
+                                        EntityPartStorage.perSave.PrimaryColorOverrides[choosen.UniqueId] = tmpPrimaryColorOverrides;
+                                        EntityPartStorage.perSave.SecondaryColorOverrides[choosen.UniqueId] = tmpSecondaryColorOverrides;
                                         EntityPartStorage.SavePerSaveSettings();
                                     }
                                     GUILayout.TextArea($"    {eeName}", GUILayout.ExpandWidth(false));
+                                    GUILayout.Space(25);
+                                    bool clicked = false;
+                                    var ee = new EquipmentEntityLink() { AssetId = eeName }.Load();
+                                    if (ee.PrimaryColorsProfile != null) {
+                                        if (PrimaryColorOverrides?.TryGetValue(eeName, out pO) ?? false) {
+                                            clicked = GUILayout.Button(GUIContent.none, GetColorButtonStyle(new Color(pO.Item1, pO.Item2, pO.Item3)), GUILayout.Width(50), GUILayout.Height(50));
+                                            primaryExists = true;
+                                        } else {
+                                            clicked = GUILayout.Button("default", GUILayout.ExpandWidth(false));
+                                        }
+                                        if (clicked) {
+                                            shouldOpenColorPicker = true;
+                                            colorPickerIsPrimary = true;
+                                        }
+                                    } else {
+                                        GUILayout.Label("No Primary Color", GUILayout.ExpandWidth(false));
+                                    }
+                                    if (ee.SecondaryColorsProfile != null) {
+                                        clicked = false;
+                                        GUILayout.Space(25);
+                                        if (SecondaryColorOverrides?.TryGetValue(eeName, out sO) ?? false) {
+                                            clicked = GUILayout.Button(GUIContent.none, GetColorButtonStyle(new Color(sO.Item1, sO.Item2, sO.Item3)), GUILayout.Width(50), GUILayout.Height(50));
+                                            secondaryExists = true;
+                                        }
+                                        else {
+                                            clicked = GUILayout.Button("default", GUILayout.ExpandWidth(false));
+                                        }
+                                        if (clicked) {
+                                            shouldOpenColorPicker = true;
+                                            colorPickerIsPrimary = false;
+                                        }
+                                    } else {
+                                        GUILayout.Label("No Secondary Color", GUILayout.ExpandWidth(false));
+                                    }
+                                    if (shouldOpenColorPicker && colorPickerItem == "") {
+                                        colorPickerItem = eeName;
+                                    }
+                                }
+                                if (Event.current.type == EventType.Layout && eeName == colorPickerItem) {
+                                    openedColorPicker = shouldOpenColorPicker;
+                                }
+                                if (openedColorPicker && colorPickerItem == eeName) {
+                                    string text = colorPickerIsPrimary ? "Primary" : "Secondary";
+                                    bool exists = colorPickerIsPrimary ? primaryExists : secondaryExists;
+                                    string color = "default";
+                                    if (exists) {
+                                        var oldColor = colorPickerIsPrimary ? pO : sO;
+                                        color = $"R: {oldColor.Item1}, G: {oldColor.Item2}, B: {oldColor.Item3}";
+                                    }
+                                    GUILayout.Label($"Old {text} Color - {color}");
+                                    GUILayout.BeginHorizontal();
+                                    GUILayout.Label("R:", GUILayout.ExpandWidth(false));
+                                    ColorPicker.r = GUILayout.HorizontalSlider(ColorPicker.r, 0f, 1f, GUILayout.Width(500));
+                                    GUILayout.EndHorizontal();
+
+                                    GUILayout.BeginHorizontal();
+                                    GUILayout.Label("G:", GUILayout.ExpandWidth(false));
+                                    ColorPicker.g = GUILayout.HorizontalSlider(ColorPicker.g, 0f, 1f, GUILayout.Width(500));
+                                    GUILayout.EndHorizontal();
+
+                                    GUILayout.BeginHorizontal();
+                                    GUILayout.Label("B:", GUILayout.ExpandWidth(false));
+                                    ColorPicker.b = GUILayout.HorizontalSlider(ColorPicker.b, 0f, 1f, GUILayout.Width(500));
+                                    GUILayout.EndHorizontal();
+                                    GUILayout.Label($"{ColorPicker.r} - {ColorPicker.g} - {ColorPicker.b}");
+                                    GUILayout.Box(GUIContent.none, GetColorBoxStyle(new Color(sO.Item1, sO.Item2, sO.Item3)), GUILayout.Width(50), GUILayout.Height(50));
+                                    using (new GUILayout.HorizontalScope()) {
+                                        if (GUILayout.Button("Apply Override", GUILayout.ExpandWidth(false))) {
+                                            if (colorPickerIsPrimary) {
+                                                EntityPartStorage.perSave.PrimaryColorOverrides.TryGetValue(choosen.UniqueId, out var primaryOverrides);
+                                                if (primaryOverrides == null) primaryOverrides = new();
+                                                primaryOverrides[eeName] = (ColorPicker.r, ColorPicker.g, ColorPicker.b);
+                                                EntityPartStorage.perSave.PrimaryColorOverrides[choosen.UniqueId] = primaryOverrides;
+                                            } else {
+                                                EntityPartStorage.perSave.SecondaryColorOverrides.TryGetValue(choosen.UniqueId, out var secondaryOverrides);
+                                                if (secondaryOverrides == null) secondaryOverrides = new();
+                                                secondaryOverrides[eeName] = (ColorPicker.r, ColorPicker.g, ColorPicker.b);
+                                                EntityPartStorage.perSave.SecondaryColorOverrides[choosen.UniqueId] = secondaryOverrides;
+                                            }
+                                            EntityPartStorage.SavePerSaveSettings();
+                                        }
+                                        GUILayout.Space(25);
+                                        if (GUILayout.Button("Remove Override", GUILayout.ExpandWidth(false))) {
+                                            if (colorPickerIsPrimary) {
+                                                EntityPartStorage.perSave.PrimaryColorOverrides.TryGetValue(choosen.UniqueId, out var primaryOverrides);
+                                                if (primaryOverrides == null) primaryOverrides = new();
+                                                primaryOverrides.Remove(eeName);
+                                                EntityPartStorage.perSave.PrimaryColorOverrides[choosen.UniqueId] = primaryOverrides;
+                                            }
+                                            else {
+                                                EntityPartStorage.perSave.SecondaryColorOverrides.TryGetValue(choosen.UniqueId, out var secondaryOverrides);
+                                                if (secondaryOverrides == null) secondaryOverrides = new();
+                                                secondaryOverrides.Remove(eeName);
+                                                EntityPartStorage.perSave.SecondaryColorOverrides[choosen.UniqueId] = secondaryOverrides;
+                                            }
+                                            EntityPartStorage.SavePerSaveSettings();
+                                        }
+                                        GUILayout.Space(25);
+                                        if (GUILayout.Button("Close", GUILayout.ExpandWidth(false))) {
+                                            colorPickerItem = "";
+                                            shouldOpenColorPicker = false;
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-
-                }
-                else {
+                } else {
                     GUILayout.Label("Load a save first!", GUILayout.ExpandWidth(false));
                 }
             }
@@ -278,6 +409,36 @@ static class Main {
                 error = ex;
             }
         }
+    }
+    private static Dictionary<Color, GUIStyle> boxStyleCache = new();
+    private static GUIStyle GetColorBoxStyle(Color color) {
+        if (boxStyleCache.TryGetValue(color, out var style)) {
+            return style;
+        }
+        style = new GUIStyle();
+        style.normal.background = MakeTex(2, 2, color);
+        boxStyleCache[color] = style;
+        return style;
+    }
+    private static Dictionary<Color, GUIStyle> buttonStyleCache = new();
+    private static GUIStyle GetColorButtonStyle(Color color) {
+        if (buttonStyleCache.TryGetValue(color, out var style)) {
+            return style;
+        }
+        style = new GUIStyle(GUI.skin.button);
+        style.normal.background = MakeTex(2, 2, color);
+        buttonStyleCache[color] = style;
+        return style;
+    }
+    private static Texture2D MakeTex(int width, int height, Color color) {
+        Color[] pix = new Color[width * height];
+        for (int i = 0; i < pix.Length; ++i) {
+            pix[i] = color;
+        }
+        Texture2D result = new Texture2D(width, height);
+        result.SetPixels(pix);
+        result.Apply();
+        return result;
     }
     public enum Outfit {
         [Description("Unchanged")]
@@ -315,6 +476,8 @@ static class Main {
             EntityPartStorage.perSave.IncludeByName.TryGetValue(context.UniqueId, out var includeIds);
             EntityPartStorage.perSave.ExcludeByName.TryGetValue(context.UniqueId, out var excludeIds);
             EntityPartStorage.perSave.NakedFlag.TryGetValue(context.UniqueId, out var nakedFlag);
+            EntityPartStorage.perSave.PrimaryColorOverrides.TryGetValue(context.UniqueId, out var primaryOverrides);
+            EntityPartStorage.perSave.SecondaryColorOverrides.TryGetValue(context.UniqueId, out var secondaryOverrides);
             if (outfitIds?.Count > 0 || includeIds?.Count > 0 || excludeIds?.Count > 0) {
                 log.Log("Found Overrides. Changing UnitEntityView.");
                 var charac = __result.GetComponent<Character>();
@@ -360,7 +523,41 @@ static class Main {
                             charac.EquipmentEntitiesForPreload.Add(eel);
                             var ee = eel.Load();
                             cachedLinks[context.UniqueId].Remove(ee);
-                            charac.AddEquipmentEntity(ee);
+                            charac.AddEquipmentEntity(ee); 
+                            if (primaryOverrides?.TryGetValue(id, out var col3) ?? false) {
+                                var col = new Color(col3.Item1, col3.Item2, col3.Item3);
+                                var firstpixel = ee.PrimaryColorsProfile.Ramps.Where(t => t.isReadable).FirstOrDefault(t => t.GetPixel(1, 1) == col);
+                                if (firstpixel == null) {
+                                    var tex = new Texture2D(1, 1, TextureFormat.ARGB32, false) {
+                                        filterMode = FilterMode.Bilinear
+                                    };
+                                    tex.SetPixel(1, 1, col);
+                                    tex.Apply();
+                                    ee.PrimaryColorsProfile.Ramps.Add(tex);
+                                    var index = ee.PrimaryColorsProfile.Ramps.IndexOf(tex);
+                                    charac.SetPrimaryRampIndex(ee, index);
+                                } else {
+                                    var index = ee.PrimaryColorsProfile.Ramps.IndexOf(firstpixel);
+                                    charac.SetPrimaryRampIndex(ee, index);
+                                }
+                            }
+                            if (secondaryOverrides?.TryGetValue(id, out col3) ?? false) {
+                                var col = new Color(col3.Item1, col3.Item2, col3.Item3);
+                                var firstpixel = ee.SecondaryColorsProfile.Ramps.Where(t => t.isReadable).FirstOrDefault(t => t.GetPixel(1, 1) == col);
+                                if (firstpixel == null) {
+                                    var tex = new Texture2D(1, 1, TextureFormat.ARGB32, false) {
+                                        filterMode = FilterMode.Bilinear
+                                    };
+                                    tex.SetPixel(1, 1, col);
+                                    tex.Apply();
+                                    ee.SecondaryColorsProfile.Ramps.Add(tex);
+                                    var index = ee.SecondaryColorsProfile.Ramps.IndexOf(tex);
+                                    charac.SetSecondaryRampIndex(ee, index);
+                                } else {
+                                    var index = ee.SecondaryColorsProfile.Ramps.IndexOf(firstpixel);
+                                    charac.SetSecondaryRampIndex(ee, index);
+                                }
+                            }
                         }
                     }
                 }

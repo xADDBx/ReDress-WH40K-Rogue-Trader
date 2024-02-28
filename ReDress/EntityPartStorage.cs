@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using static ReDress.Main;
 using static UnityModManagerNet.UnityModManager.Param;
 using Kingmaker.EntitySystem.Entities.Base;
+using UnityEngine;
 
 namespace ReDress {
     public static class EntityPartStorage {
@@ -20,6 +21,10 @@ namespace ReDress {
             public Dictionary<string, HashSet<string>> ExcludeByName = new();
             [JsonProperty]
             public Dictionary<string, HashSet<string>> IncludeByName = new();
+            [JsonProperty]
+            public Dictionary<string, Dictionary<string, (float, float, float)>> PrimaryColorOverrides = new();
+            [JsonProperty]
+            public Dictionary<string, Dictionary<string, (float, float, float)>> SecondaryColorOverrides = new();
             [JsonProperty]
             public Dictionary<string, bool> NakedFlag = new();
         }
