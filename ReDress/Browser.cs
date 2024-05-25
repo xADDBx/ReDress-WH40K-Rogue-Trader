@@ -62,28 +62,28 @@ namespace ReDress {
             Action<Definition, Item> onRowGUI = null) {
             current ??= new List<Item>();
             List<Definition> definitions = Update(current, searchKey, sortKeys, definition);
-                using (new HorizontalScope()) {
-                    Space(50);
-                    Label("Limit", ExpandWidth(false));
-                    var newSearchText = TextField(String.Copy(_searchText), Width(400));
-                    if (newSearchText != _searchText) {
-                        _searchText = newSearchText;
-                        ResetSearch();
-                    }
-                    Space(25);
-                    if (_doCopyToEnd) {
-                        Label("Copying...", ExpandWidth(false));
-                        Space(25);
-                    }
+            using (new HorizontalScope()) {
+                Space(50);
+                Label("Limit", ExpandWidth(false));
+                var newSearchText = TextField(String.Copy(_searchText), Width(400));
+                if (newSearchText != _searchText) {
+                    _searchText = newSearchText;
+                    ResetSearch();
                 }
-                using (new HorizontalScope()) {
-                    Space(50);
-                    if (_matchCount > 0 || _searchText.Length > 0) {
-                        string matchesText = "Matches: " + $"{_matchCount}";
-                        if (_matchCount > SearchLimit) { matchesText += " => " + $"{SearchLimit}"; }
+                Space(25);
+                if (_doCopyToEnd) {
+                    Label("Copying...", ExpandWidth(false));
+                    Space(25);
+                }
+            }
+            using (new HorizontalScope()) {
+                Space(50);
+                if (_matchCount > 0 || _searchText.Length > 0) {
+                    string matchesText = "Matches: " + $"{_matchCount}";
+                    if (_matchCount > SearchLimit) { matchesText += " => " + $"{SearchLimit}"; }
 
-                        Label(matchesText, ExpandWidth(false));
-                    }
+                    Label(matchesText, ExpandWidth(false));
+                }
                 if (_matchCount > SearchLimit) {
                     string pageLabel = "Page: " + _currentPage.ToString() + " / " + _pageCount.ToString();
                     Space(25);
@@ -91,8 +91,7 @@ namespace ReDress {
                     if (Button("-", ExpandWidth(false))) {
                         if (_currentPage == 1) {
                             _currentPage = _pageCount;
-                        }
-                        else {
+                        } else {
                             _currentPage -= 1;
                         }
                         _updatePages = true;
@@ -100,8 +99,7 @@ namespace ReDress {
                     if (Button("+", ExpandWidth(false))) {
                         if (_currentPage == _pageCount) {
                             _currentPage = 1;
-                        }
-                        else {
+                        } else {
                             _currentPage += 1;
                         }
                         _updatePages = true;
@@ -147,8 +145,7 @@ namespace ReDress {
                             _finishedCopyToEnd = false;
                             cachedSearchResults.Clear();
                             filteredDefinitions = tempFilteredDefinitions;
-                        }
-                        else {
+                        } else {
                             // If the search already finished we want to copy all results as fast as possible
                             if (_finishedSearch && cachedSearchResults.Count < 1000) {
                                 filteredDefinitions.AddRange(cachedSearchResults);
@@ -200,8 +197,7 @@ namespace ReDress {
                         }
                         isSearching = true;
                         needsReloadData = false;
-                    }
-                    else {
+                    } else {
                         _searchCancellationTokenSource.Cancel();
                     }
                 }
@@ -242,8 +238,7 @@ namespace ReDress {
                         lock (cachedSearchResults) {
                             cachedSearchResults.Enqueue(def);
                         }
-                    }
-                    else if (searchKey != null) {
+                    } else if (searchKey != null) {
                         var text = searchKey(def).ToLower();
                         if (terms.All(term => text.IndexOf(term, 0, StringComparison.InvariantCultureIgnoreCase) != -1)) {
                             lock (cachedSearchResults) {
@@ -252,8 +247,7 @@ namespace ReDress {
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 lock (cachedSearchResults) {
                     cachedSearchResults = new Queue<Definition>(definitions);
                 }
@@ -265,8 +259,7 @@ namespace ReDress {
                 _pageCount = (int)Math.Ceiling((double)_matchCount / SearchLimit);
                 _currentPage = Math.Min(_currentPage, _pageCount);
                 _currentPage = Math.Max(1, _currentPage);
-            }
-            else {
+            } else {
                 _pageCount = 1;
                 _currentPage = 1;
             }

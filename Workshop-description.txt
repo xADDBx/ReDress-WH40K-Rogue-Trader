@@ -14,4 +14,4 @@ To use:
 
 
 [h2]Installation[/h2]
-Installation is similar to [url=https://github.com/cabarius/ToyBox/wiki/Installing-Toybox-for-RT-(Steam-Workshop-Edition)] how it's done with ToyBox[/url].
+Should be automatic for Steam Players as of Game Version 1.1.52.

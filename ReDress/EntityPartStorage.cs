@@ -7,8 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static ReDress.Main;
-using static UnityModManagerNet.UnityModManager.Param;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.Visual.CharacterSystem;
 
 namespace ReDress {
     public static class EntityPartStorage {
@@ -20,6 +20,8 @@ namespace ReDress {
             public Dictionary<string, HashSet<string>> ExcludeByName = new();
             [JsonProperty]
             public Dictionary<string, HashSet<string>> IncludeByName = new();
+            [JsonProperty]
+            public Dictionary<string, Dictionary<string, RampColorPreset.IndexSet>> RampOverrideByName = new();
             [JsonProperty]
             public Dictionary<string, bool> NakedFlag = new();
         }
