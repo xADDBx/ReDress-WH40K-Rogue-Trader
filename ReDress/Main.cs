@@ -261,6 +261,7 @@ static class Main {
                                                     EntityPartStorage.SavePerSaveSettings();
                                                 }
                                             }
+                                            GUILayout.Label($"    {pair1.Item2}");
                                         }
                                     });
                                     GUILayout.Label("------------------------------------------");
