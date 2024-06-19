@@ -25,6 +25,11 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem;
 using Microsoft.Cci.Pdb;
 using Kingmaker.UI.DollRoom;
+using static ReDress.EntityPartStorage;
+using Owlcat.Runtime.Visual.Overrides.HBAO;
+using UnityEngine.Device;
+using Kingmaker.Utility.UnityExtensions;
+using Kingmaker.UI.Common;
 
 namespace ReDress;
 
@@ -73,7 +78,15 @@ static class Main {
     internal static bool shouldOpenClothingSection = false;
     internal static bool openedClothingSection = false;
     internal static bool openedColorSection = false;
+    internal static string showPrimaryForEE = "";
+    internal static string showSecondaryForEE = "";
+    internal static bool ShowCustomPrimary = false;
+    internal static bool ShowCustomSecondary = false;
+    internal static bool ShouldShowCustomPrimary = false;
+    internal static bool ShouldShowCustomSecondary = false;
     internal static bool shouldOpenColorSection = false;
+    internal static CustomColor colorPicker1 = null;
+    internal static CustomColor colorPicker2 = null;
     internal static string colorPickerItem = "";
     internal static Browser<(string, string), (string, string)> includeBrowser = new(true);
     internal static Browser<Texture2D, Texture2D> rampOverrideBrowser = new(true);
@@ -85,7 +98,6 @@ static class Main {
         openedClothingSection = false;
         openedColorSection = false;
         colorPickerItem = "";
-        pickedUnit = null;
         selectedOutfit = Outfit.Current;
     }
     static void OnGUI(UnityModManager.ModEntry modEntry) {
@@ -294,22 +306,71 @@ static class Main {
                         using (new GUILayout.HorizontalScope()) {
                             GUILayout.Space(25);
                             EntityPartStorage.perSave.RampOverrideByName.TryGetValue(pickedUnit.UniqueId, out var overrides);
+                            EntityPartStorage.perSave.CustomColorByName.TryGetValue(pickedUnit.UniqueId, out var customOverrides);
                             overrides ??= new();
+                            customOverrides ??= new();
                             using (new GUILayout.VerticalScope()) {
-                                List<EquipmentEntityLink> list = new();
-                                IEnumerable<KingmakerEquipmentEntity> unitEquipmentEntities = CharGenUtility.GetUnitEquipmentEntities(pickedUnit);
-                                if (unitEquipmentEntities.Any<KingmakerEquipmentEntity>()) {
-                                    BlueprintRace race = pickedUnit.Progression.Race;
-                                    Race race2 = ((race != null) ? race.RaceId : Race.Human);
-                                    list = CharGenUtility.GetClothes(unitEquipmentEntities, pickedUnit.Gender, race2).ToList<EquipmentEntityLink>();
-                                }
-                                foreach (var entry in list) {
-                                    var ee = entry.Load(false, false);
-                                    var eeName = ee.name ?? ee.ToString();
-                                    CharGenUtility.GetClothesColorsProfile([entry], out var colorPresets, false);
-                                    if (colorPresets != null) {
-                                        using (new GUILayout.HorizontalScope()) {
-                                            GUILayout.Label($"{eeName}:", GUILayout.ExpandWidth(false));
+                                foreach (var entry in pickedUnit.View.CharacterAvatar.EquipmentEntities.Union(pickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
+                                    var ee = entry;
+                                    var eeName = ee.name.IsNullOrEmpty() ? ee.ToString() : ee.name;
+                                    using (new GUILayout.HorizontalScope()) {
+                                        GUILayout.Label($"{eeName}:", GUILayout.Width(400));
+                                        using (new GUILayout.VerticalScope()) {
+                                            if (customOverrides.ContainsKey(eeName)) {
+                                                if (GUILayout.Button("Remove Custom Color Override", GUILayout.ExpandWidth(false))) {
+                                                    customOverrides.Remove(eeName);
+                                                    EntityPartStorage.perSave.CustomColorByName[pickedUnit.UniqueId] = customOverrides;
+                                                    EntityPartStorage.SavePerSaveSettings();
+                                                }
+                                            }
+                                            customOverrides.TryGetValue(eeName, out var oldOverrides);
+                                            if (oldOverrides.Item1 != null) {
+                                                GUILayout.Label($"Current Primary Override: {oldOverrides.Item1}");
+                                            }
+                                            bool isActive = ShowCustomPrimary && (showPrimaryForEE == eeName);
+                                            ShouldShowCustomPrimary = GUILayout.Toggle(isActive, "Show Custom Primary Color Picker", GUILayout.ExpandWidth(false));
+                                            if ((isActive && !ShouldShowCustomPrimary) || (!isActive && ShouldShowCustomPrimary)) {
+                                                ShowCustomPrimary = ShouldShowCustomPrimary;
+                                                colorPicker1 = null;
+                                            }
+                                            if (ShouldShowCustomPrimary) {
+                                                if (colorPicker1 == null) {
+                                                    colorPicker1 = oldOverrides.Item1 ?? new();
+                                                }
+                                                showPrimaryForEE = eeName;
+                                                if (ColorPickerGUI(true)) {
+                                                    oldOverrides.Item1 = AccessTools.MakeDeepCopy<CustomColor>(colorPicker1);
+                                                    customOverrides[eeName] = oldOverrides;
+                                                    EntityPartStorage.perSave.CustomColorByName[pickedUnit.UniqueId] = customOverrides;
+                                                    EntityPartStorage.SavePerSaveSettings();
+                                                    SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
+                                                }
+                                            }
+                                            if (oldOverrides.Item2 != null) {
+                                                GUILayout.Label($"Current Secondary Override: {oldOverrides.Item2}");
+                                            }
+                                            isActive = ShowCustomSecondary && (showSecondaryForEE == eeName);
+                                            ShouldShowCustomSecondary = GUILayout.Toggle(isActive, "Show Custom Secondary Color Picker", GUILayout.ExpandWidth(false));
+                                            if ((isActive && !ShouldShowCustomSecondary) || (!isActive && ShouldShowCustomSecondary)) {
+                                                ShowCustomSecondary = ShouldShowCustomSecondary;
+                                                colorPicker2 = null;
+                                            }
+                                            if (ShouldShowCustomSecondary) {
+                                                if (colorPicker2 == null) {
+                                                    colorPicker2 = oldOverrides.Item2 ?? new();
+                                                }
+                                                showSecondaryForEE = eeName;
+                                                if (ColorPickerGUI(false)) {
+                                                    oldOverrides.Item2 = AccessTools.MakeDeepCopy<CustomColor>(colorPicker2);
+                                                    customOverrides[eeName] = oldOverrides;
+                                                    EntityPartStorage.perSave.CustomColorByName[pickedUnit.UniqueId] = customOverrides;
+                                                    EntityPartStorage.SavePerSaveSettings();
+                                                    SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
+                                                }
+                                            }
+                                        }
+                                        GetClothColorsProfile(entry, out var colorPresets, false);
+                                        if (colorPresets != null) {
                                             if (overrides.ContainsKey(eeName)) {
                                                 if (GUILayout.Button("Remove Color Override", GUILayout.ExpandWidth(false))) {
                                                     overrides.Remove(eeName);
@@ -317,18 +378,16 @@ static class Main {
                                                     EntityPartStorage.SavePerSaveSettings();
                                                 }
                                             }
-                                        }
-                                        using (new GUILayout.HorizontalScope()) {
                                             GUILayout.Space(50);
                                             using (new GUILayout.VerticalScope()) {
                                                 foreach (var pair in colorPresets.IndexPairs) {
                                                     using (new GUILayout.HorizontalScope()) {
                                                         GUILayout.Label($"{pair.Name ?? "Null Name"} - {pair.PrimaryIndex} - {pair.SecondaryIndex}", GUILayout.ExpandWidth(false));
                                                         if (GUILayout.Button("Select", GUILayout.ExpandWidth(false))) {
-                                                            SetColorPair(ee, pair);
                                                             overrides[eeName] = pair;
                                                             EntityPartStorage.perSave.RampOverrideByName[pickedUnit.UniqueId] = overrides;
                                                             EntityPartStorage.SavePerSaveSettings();
+                                                            SetColorPair(ee, pair);
                                                         }
                                                     }
                                                 }
@@ -348,6 +407,46 @@ static class Main {
             }
         }
     }
+    public static CharacterColorsProfile GetClothColorsProfile(EquipmentEntity equipmentEntity, out RampColorPreset colorPreset, bool secondary) {
+        if (!(equipmentEntity == null)) {
+            CharacterColorsProfile characterColorsProfile = (secondary ? equipmentEntity.SecondaryColorsProfile : equipmentEntity.PrimaryColorsProfile);
+            if (characterColorsProfile != null) {
+                colorPreset = equipmentEntity.ColorPresets;
+                return characterColorsProfile;
+            }
+        }
+        colorPreset = null;
+        return null;
+    }
+    public static bool ColorPickerGUI(bool isPrimary) {
+        CustomColor current = isPrimary ? colorPicker1 : colorPicker2;
+        using (new GUILayout.HorizontalScope()) {
+            GUILayout.Space(20);
+            using (new GUILayout.VerticalScope()) {
+                GUILayout.Label("Custom RGB Color Picker");
+
+                GUILayout.Label("Red: " + Mathf.RoundToInt(current.R * 255), GUILayout.ExpandWidth(false));
+                current.R = GUILayout.HorizontalSlider(current.R, 0f, 1f, GUILayout.Width(250));
+
+                GUILayout.Label("Green: " + Mathf.RoundToInt(current.G * 255), GUILayout.ExpandWidth(false));
+                current.G = GUILayout.HorizontalSlider(current.G, 0f, 1f, GUILayout.Width(250));
+
+                GUILayout.Label("Blue: " + Mathf.RoundToInt(current.B * 255), GUILayout.ExpandWidth(false));
+                current.B = GUILayout.HorizontalSlider(current.B, 0f, 1f, GUILayout.Width(250));
+
+                // Display the currently picked color
+                GUILayout.Label("Picked Color");
+                GUIStyle colorStyle = new GUIStyle(GUI.skin.box);
+                colorStyle.normal.background = MakeTex(2, 2, current);
+                GUILayout.Box(GUIContent.none, colorStyle, GUILayout.Width(100), GUILayout.Height(100));
+                if (GUILayout.Button("Apply Custom Color", GUILayout.ExpandWidth(false))) {
+                    return true;
+                }
+                return false;
+            }
+        }
+    }
+
     public static void SetColorPair(EquipmentEntity ee, RampColorPreset.IndexSet pair) {
         if (pair.PrimaryIndex >= 0) {
             pickedUnit.View.CharacterAvatar.SetPrimaryRampIndex(ee, pair.PrimaryIndex);
@@ -355,6 +454,7 @@ static class Main {
         if (pair.SecondaryIndex >= 0) {
             pickedUnit.View.CharacterAvatar.SetSecondaryRampIndex(ee, pair.SecondaryIndex);
         }
+        pickedUnit.View.CharacterAvatar.IsAtlasesDirty = true;
         EventBus.RaiseEvent<IUnitVisualChangeHandler>(pickedUnit, delegate (IUnitVisualChangeHandler h) {
             h.HandleUnitChangeEquipmentColor(pair.PrimaryIndex, false);
         }, true);
@@ -451,8 +551,10 @@ static class Main {
     [HarmonyPatch(typeof(EquipmentEntity), nameof(EquipmentEntity.RepaintTextures), [typeof(EquipmentEntity.PaintedTextures), typeof(int), typeof(int)])]
     internal static class EquipmentEntity_RepaintTextures_Patch {
         internal static string currentUID;
+        internal static (CustomColor, CustomColor) customOverride = (null, null);
         [HarmonyPrefix]
         private static void RepaintRextures(EquipmentEntity __instance, EquipmentEntity.PaintedTextures paintedTextures, ref int primaryRampIndex,ref int secondaryRampIndex) {
+            customOverride = (null, null);
             if (currentUID == null) {
                 log.Log(new System.Diagnostics.StackTrace().ToString());
                 return;
@@ -468,6 +570,51 @@ static class Main {
                     secondaryRampIndex = pair.SecondaryIndex;
                 }
             }
+            if (EntityPartStorage.perSave.CustomColorByName.TryGetValue(currentUID, out var overrides2)) {
+                var eeName = __instance.name ?? __instance.ToString();
+                if (eeName == null) {
+                    log.Log(new System.Diagnostics.StackTrace().ToString());
+                    return;
+                }
+                if (overrides2.TryGetValue(eeName, out var customColor)) {
+                    customOverride = (customColor.Item1, customColor.Item2);
+                }
+            }
+        }
+    }
+    [HarmonyPatch(typeof(CharacterTextureDescription), nameof(CharacterTextureDescription.Repaint))]
+    internal static class CharacterTextureDescription_Repaint_Patch {
+        private static Texture2D prim = null;
+        private static Texture2D sec = null;
+        private static Dictionary<CustomColor, Texture2D> texCache = new();
+        [HarmonyPrefix]
+        private static void RepaintPre(CharacterTextureDescription __instance, RenderTexture rtToPaint, ref Texture2D primaryRamp, ref Texture2D secondaryRamp) {
+            var ov = EquipmentEntity_RepaintTextures_Patch.customOverride;
+            prim = primaryRamp;
+            sec = secondaryRamp;
+            if (ov.Item1 != null) {
+                if (texCache.ContainsKey(ov.Item1)) {
+                    primaryRamp = texCache[ov.Item1];
+                } else {
+                    primaryRamp = MakeTex(1, 1, ov.Item1);
+                    texCache[ov.Item1] = primaryRamp;
+                }
+            }
+            if (ov.Item2 != null) {
+                if (texCache.ContainsKey(ov.Item2)) {
+                    secondaryRamp = texCache[ov.Item2];
+                } else {
+                    secondaryRamp = MakeTex(1, 1, ov.Item2);
+                    texCache[ov.Item2] = secondaryRamp;
+                }
+            }
+        }
+        [HarmonyPostfix]
+        private static void RepaintPost(CharacterTextureDescription __instance, ref Texture2D primaryRamp, ref Texture2D secondaryRamp) {
+            primaryRamp = prim;
+            secondaryRamp = sec;
+            prim = null;
+            sec = null;
         }
     }
     [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.SetupUnit))]
@@ -483,26 +630,30 @@ static class Main {
         [HarmonyPatch(nameof(Character.OnRenderObject))]
         [HarmonyPrefix]
         private static void OnRenderObject(Character __instance) {
-            var tmp = __instance.GetComponent<UnitEntityView>()?.UniqueId ?? null;
+            var tmp = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
             if (tmp != null) EquipmentEntity_RepaintTextures_Patch.currentUID = tmp;
+            if (__instance.IsInDollRoom) {
+                tmp = UIDollRooms.Instance.CharacterDollRoom.m_OriginalAvatar.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
+                if (tmp != null) EquipmentEntity_RepaintTextures_Patch.currentUID = tmp;
+            }
         }
         [HarmonyPatch(nameof(Character.MergeOverlays))]
         [HarmonyPrefix]
         private static void MergeOverlays(Character __instance) {
-            var tmp = __instance.GetComponent<UnitEntityView>()?.UniqueId ?? null;
+            var tmp = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
             if (tmp != null) EquipmentEntity_RepaintTextures_Patch.currentUID = tmp;
         }
         [HarmonyPatch(nameof(Character.DoUpdate))]
         [HarmonyPrefix]
         private static void DoUpdate(Character __instance) {
-            var tmp = __instance.GetComponent<UnitEntityView>()?.UniqueId ?? null;
+            var tmp = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
             if (tmp != null) EquipmentEntity_RepaintTextures_Patch.currentUID = tmp;
         }
         [HarmonyPatch(nameof(Character.AddEquipmentEntity), [typeof(EquipmentEntity), typeof(bool)])]
         [HarmonyPrefix]
         private static bool AddEquipmentEntity(Character __instance, EquipmentEntity ee) {
             try {
-                var uniqueId = __instance.GetComponent<UnitEntityView>()?.UniqueId ?? null;
+                var uniqueId = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
                 if (uniqueId != null) {
                     EntityPartStorage.perSave.AddClothes.TryGetValue(uniqueId, out var ids);
                     EntityPartStorage.perSave.NakedFlag.TryGetValue(uniqueId, out var nakedFlag);
@@ -546,7 +697,17 @@ static class Main {
            .GetCustomAttributes(typeof(DescriptionAttribute), false);
         return attributes.Length > 0 ? attributes[0].Description : string.Empty;
     }
-
+    public static Texture2D MakeTex(int width, int height, Color col) {
+        Color[] pix = new Color[width * height];
+        for (int i = 0; i < pix.Length; i++) {
+            pix[i] = col;
+        }
+        Texture2D result = new Texture2D(width, height, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
+        result.wrapMode = TextureWrapMode.Clamp;
+        result.SetPixels(pix);
+        result.Apply();
+        return result;
+    }
     public static void DrawDiv() {
         using (new GUILayout.VerticalScope()) {
             GUILayout.Space(10);

@@ -9,9 +9,22 @@ using System.Threading.Tasks;
 using static ReDress.Main;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Visual.CharacterSystem;
+using UnityEngine;
 
 namespace ReDress {
     public static class EntityPartStorage {
+        public class CustomColor {
+            public float R;
+            public float G;
+            public float B;
+
+            public static implicit operator UnityEngine.Color(CustomColor c) {
+                return new UnityEngine.Color(c.R, c.G, c.B);
+            }
+            public override string ToString() {
+                return $"R: {Mathf.RoundToInt(R * 255)}, G: {Mathf.RoundToInt(G * 255)}, B: {Mathf.RoundToInt(B * 255)}";
+            }
+        }
         public class PerSaveSettings : EntityPart {
             public const string ID = "ReDress.PerSaveSettings";
             [JsonProperty]
@@ -22,6 +35,8 @@ namespace ReDress {
             public Dictionary<string, HashSet<string>> IncludeByName = new();
             [JsonProperty]
             public Dictionary<string, Dictionary<string, RampColorPreset.IndexSet>> RampOverrideByName = new();
+            [JsonProperty]
+            public Dictionary<string, Dictionary<string, (CustomColor, CustomColor)>> CustomColorByName = new();
             [JsonProperty]
             public Dictionary<string, bool> NakedFlag = new();
         }
