@@ -101,10 +101,6 @@ static class Main {
         openedClothingSection = false;
         openedColorSection = false;
         colorPickerItem = "";
-        if (EntityPartStorage.CustomColor.TextureCache.Count > 0) {
-            EntityPartStorage.CustomColor.TextureCache.ForEach(i => MonoBehaviour.Destroy(i.Value));
-            EntityPartStorage.CustomColor.TextureCache = new();
-        }
         selectedOutfit = Outfit.Current;
     }
     static void OnGUI(UnityModManager.ModEntry modEntry) {
@@ -124,10 +120,6 @@ static class Main {
             }
         } else {
             try {
-                if (EntityPartStorage.CustomColor.TextureCache.Count > 400) {
-                    EntityPartStorage.CustomColor.TextureCache.ForEach(i => MonoBehaviour.Destroy(i.Value));
-                    EntityPartStorage.CustomColor.TextureCache = new();
-                }
                 shouldOpenGuide = GUILayout.Toggle(shouldOpenGuide, "Show Guide", GUILayout.ExpandWidth(false));
                 if (Event.current.type == EventType.Layout) {
                     openedGuide = shouldOpenGuide;

@@ -15,7 +15,7 @@ namespace ReDress {
     public static class EntityPartStorage {
         public class CustomColor {
             [JsonIgnore]
-            public static Dictionary<(float, float, float), Texture2D> TextureCache = new();
+            public static Texture2D CachedTex = new Texture2D(1, 1, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
             [JsonProperty]
             public float R;
             [JsonProperty]
@@ -30,21 +30,15 @@ namespace ReDress {
                 return $"R: {Mathf.RoundToInt(R * 255)}, G: {Mathf.RoundToInt(G * 255)}, B: {Mathf.RoundToInt(B * 255)}";
             }
             public Texture2D MakeBoxTex() {
-                if (TextureCache.TryGetValue((R, G, B), out Texture2D tex)) {
-                    return tex;
-                } else {
-                    Texture2D result = new Texture2D(1, 1, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
-                    result.wrapMode = TextureWrapMode.Clamp;
-                    result.SetPixels([this]);
-                    result.Apply(false, true);
-                    TextureCache.Add((R, G, B), result);
-                    return result;
-                }
+                CachedTex.wrapMode = TextureWrapMode.Clamp;
+                CachedTex.SetPixels([this]);
+                CachedTex.Apply();
+                return CachedTex;
             }
         }
         public class CustomColorTex {
             [JsonIgnore]
-            public static Dictionary<CustomColorTex, Texture2D> TextureCache = new();
+            public static Dictionary<(int, int), Texture2D> CachedTextures = new();
             [JsonProperty]
             public int height = 1;
             [JsonProperty]
@@ -64,26 +58,19 @@ namespace ReDress {
                 colors = [c];
             }
             public Texture2D MakeTex() {
-                var cachedTexKey = TextureCache.Keys.FirstOrDefault(c => {
-                    bool couldBeEqual = c.height == height && c.width == width && c.wrapMode == wrapMode;
-                    if (!couldBeEqual) return false;
-                    for (int i = 0; i < height * width; i++) {
-                        if (c.colors[i].R != colors[i].R || c.colors[i].G != colors[i].G || c.colors[i].B != colors[i].B) return false;
-                    }
-                    return true;
-                });
-                if (cachedTexKey != null) return TextureCache[cachedTexKey];
+                if (!CachedTextures.TryGetValue((width, height), out var CachedTex)) {
+                    CachedTex = new Texture2D(width, height, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
+                    CachedTextures[(width, height)] = CachedTex;
+                }
                 Color[] pix = new Color[width * height];
                 for (int i = 0; i < pix.Length; i++) {
                     pix[i] = colors[i];
                 }
-                Texture2D result = new Texture2D(width, height, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
-                result.wrapMode = wrapMode;
-                result.SetPixels(pix);
+                CachedTex.wrapMode = wrapMode;
+                CachedTex.SetPixels(pix);
                 // Maybe result.Compress() if size > 1x1?
-                TextureCache.Add(this, result);
-                result.Apply(false, true);
-                return result;
+                CachedTex.Apply();
+                return CachedTex;
             }
             public override string ToString() {
                 return $"{height}x{width} Texture with {wrapMode} mode.";
