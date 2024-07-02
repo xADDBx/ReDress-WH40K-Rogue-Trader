@@ -32,7 +32,7 @@ namespace ReDress {
                     Texture2D result = new Texture2D(1, 1, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
                     result.wrapMode = TextureWrapMode.Clamp;
                     result.SetPixels([this]);
-                    result.Apply();
+                    result.Apply(false, true);
                     TextureCache.Add((R, G, B), result);
                     return result;
                 }
@@ -73,7 +73,7 @@ namespace ReDress {
                 result.SetPixels(pix);
                 // Maybe result.Compress() if size > 1x1?
                 TextureCache.Add(this, result);
-                result.Apply();
+                result.Apply(false, true);
                 return result;
             }
             public override string ToString() {

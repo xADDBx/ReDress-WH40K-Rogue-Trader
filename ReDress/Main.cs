@@ -101,6 +101,10 @@ static class Main {
         openedClothingSection = false;
         openedColorSection = false;
         colorPickerItem = "";
+        if (EntityPartStorage.CustomColor.TextureCache.Count > 0) {
+            EntityPartStorage.CustomColor.TextureCache.ForEach(i => MonoBehaviour.Destroy(i.Value));
+            EntityPartStorage.CustomColor.TextureCache = new();
+        }
         selectedOutfit = Outfit.Current;
     }
     static void OnGUI(UnityModManager.ModEntry modEntry) {
@@ -120,7 +124,7 @@ static class Main {
             }
         } else {
             try {
-                if (EntityPartStorage.CustomColor.TextureCache.Count > 1000) {
+                if (EntityPartStorage.CustomColor.TextureCache.Count > 400) {
                     EntityPartStorage.CustomColor.TextureCache.ForEach(i => MonoBehaviour.Destroy(i.Value));
                     EntityPartStorage.CustomColor.TextureCache = new();
                 }
