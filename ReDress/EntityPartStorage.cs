@@ -10,7 +10,6 @@ using static ReDress.Main;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Visual.CharacterSystem;
 using UnityEngine;
-using System.Drawing.Drawing2D;
 
 namespace ReDress {
     public static class EntityPartStorage {
