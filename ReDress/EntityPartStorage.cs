@@ -64,15 +64,15 @@ namespace ReDress {
                 colors = [c];
             }
             public Texture2D MakeTex() {
-                var MaybeTex = TextureCache.Keys.FirstOrDefault(c => {
-                    bool b = c.height == height && c.width == width && c.wrapMode == wrapMode;
-                    if (!b) return b;
+                var cachedTexKey = TextureCache.Keys.FirstOrDefault(c => {
+                    bool couldBeEqual = c.height == height && c.width == width && c.wrapMode == wrapMode;
+                    if (!couldBeEqual) return false;
                     for (int i = 0; i < height * width; i++) {
-                        b &= c.colors[i].R == colors[i].R && c.colors[i].G == colors[i].G && c.colors[i].B == colors[i].B;
+                        if (c.colors[i].R != colors[i].R || c.colors[i].G != colors[i].G || c.colors[i].B != colors[i].B) return false;
                     }
-                    return b;
+                    return true;
                 });
-                if (MaybeTex != null) return TextureCache[MaybeTex];
+                if (cachedTexKey != null) return TextureCache[cachedTexKey];
                 Color[] pix = new Color[width * height];
                 for (int i = 0; i < pix.Length; i++) {
                     pix[i] = colors[i];
