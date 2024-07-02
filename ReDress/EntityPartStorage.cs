@@ -39,6 +39,7 @@ namespace ReDress {
             }
         }
         public class CustomColorTex {
+            public static Dictionary<CustomColorTex, Texture2D> TextureCache = new();
             public int height = 1;
             public int width = 1;
             public List<CustomColor> colors;
@@ -54,6 +55,15 @@ namespace ReDress {
                 colors = [c];
             }
             public Texture2D MakeTex() {
+                var MaybeTex = TextureCache.Keys.FirstOrDefault(c => {
+                    bool b = c.height == height && c.width == width && c.wrapMode == wrapMode;
+                    if (!b) return b;
+                    for (int i = 0; i < height * width; i++) {
+                        b &= c.colors[i].R == colors[i].R && c.colors[i].G == colors[i].G && c.colors[i].B == colors[i].B;
+                    }
+                    return b;
+                });
+                if (MaybeTex != null) return TextureCache[MaybeTex];
                 Color[] pix = new Color[width * height];
                 for (int i = 0; i < pix.Length; i++) {
                     pix[i] = colors[i];
@@ -62,6 +72,7 @@ namespace ReDress {
                 result.wrapMode = wrapMode;
                 result.SetPixels(pix);
                 // Maybe result.Compress() if size > 1x1?
+                TextureCache.Add(this, result);
                 result.Apply();
                 return result;
             }
