@@ -478,13 +478,17 @@ static class Main {
         }
     }
     public static void ColorPickerGrid(ref CustomColorTex customColors, ref int customColorIndex, ref int height, ref int width) {
+        bool changedSize = false; 
         using (new GUILayout.HorizontalScope()) {
             GUILayout.Label("Texture Height: ", GUILayout.ExpandWidth(false));
-            IntTextField(ref height, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
+            changedSize |= IntTextField(ref height, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
         }
         using (new GUILayout.HorizontalScope()) {
             GUILayout.Label("Texture Width: ", GUILayout.ExpandWidth(false));
-            IntTextField(ref width, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
+            changedSize |= IntTextField(ref width, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
+        }
+        if (changedSize) {
+            customColorIndex = Math.Max(customColorIndex, height * width - 1);
         }
         using (new GUILayout.HorizontalScope()) {
             bool changed = false;
