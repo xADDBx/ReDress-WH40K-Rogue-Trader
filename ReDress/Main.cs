@@ -31,6 +31,7 @@ using UnityEngine.Device;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.UI.Common;
 using Kingmaker.Utility.DotNetExtensions;
+using static Kingmaker.Visual.Sound.SoundEventsEmitter;
 
 namespace ReDress;
 
@@ -81,15 +82,20 @@ static class Main {
     internal static bool openedColorSection = false;
     internal static string showPrimaryForEE = "";
     internal static string showSecondaryForEE = "";
+    internal static string showMainForEE = "";
     internal static bool ShowCustomPrimary = false;
     internal static bool ShowCustomSecondary = false;
+    internal static bool ShowCustomMain = false;
     internal static bool ShouldShowCustomPrimary = false;
     internal static bool ShouldShowCustomSecondary = false;
+    internal static bool ShouldShowCustomMain = false;
     internal static bool shouldOpenColorSection = false;
     internal static CustomColorTex colorPicker1 = null;
     internal static CustomColorTex colorPicker2 = null;
+    internal static CustomColorTex colorPicker3 = null;
     internal static int colorPicker1col = 0;
     internal static int colorPicker2col = 0;
+    internal static int colorPicker3col = 0;
     internal static string colorPickerItem = "";
     internal static Browser<(string, string), (string, string)> includeBrowser = new(true);
     internal static Browser<Texture2D, Texture2D> rampOverrideBrowser = new(true);
@@ -344,7 +350,7 @@ static class Main {
                                                     colorPicker1col = 0;
                                                 }
                                                 showPrimaryForEE = eeName;
-                                                if (ColorPickerGUI(true)) {
+                                                if (ColorPickerGUI(1)) {
                                                     oldOverrides.Item1 = AccessTools.MakeDeepCopy<CustomColorTex>(colorPicker1);
                                                     customOverrides[eeName] = oldOverrides;
                                                     EntityPartStorage.perSave.CustomColorsByName[pickedUnit.UniqueId] = customOverrides;
@@ -369,7 +375,7 @@ static class Main {
                                                     colorPicker2col = 0;
                                                 }
                                                 showSecondaryForEE = eeName;
-                                                if (ColorPickerGUI(false)) {
+                                                if (ColorPickerGUI(2)) {
                                                     oldOverrides.Item2 = AccessTools.MakeDeepCopy<CustomColorTex>(colorPicker2);
                                                     customOverrides[eeName] = oldOverrides;
                                                     EntityPartStorage.perSave.CustomColorsByName[pickedUnit.UniqueId] = customOverrides;
@@ -377,6 +383,33 @@ static class Main {
                                                     SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
                                                 }
                                             }
+                                            /*
+                                            if (oldOverrides.Item3 != null) {
+                                                GUILayout.Label($"Current Main Texture Override: {oldOverrides.Item3}");
+                                            }
+                                            isActive = ShowCustomMain && (showMainForEE == eeName);
+                                            ShouldShowCustomMain = GUILayout.Toggle(isActive, "Show Custom Main Texture Creator", GUILayout.ExpandWidth(false));
+                                            if ((isActive && !ShouldShowCustomMain) || (!isActive && ShouldShowCustomMain)) {
+                                                ShowCustomMain = ShouldShowCustomMain;
+                                                colorPicker3 = null;
+                                            }
+                                            if (ShouldShowCustomMain) {
+                                                if (colorPicker3 == null) {
+                                                    colorPicker3 = oldOverrides.Item3 ?? new(doClamp ? TextureWrapMode.Clamp : TextureWrapMode.Repeat);
+                                                    width3 = colorPicker3.width;
+                                                    height3 = colorPicker3.height;
+                                                    colorPicker3col = 0;
+                                                }
+                                                showMainForEE = eeName;
+                                                if (ColorPickerGUI(3)) {
+                                                    oldOverrides.Item3 = AccessTools.MakeDeepCopy<CustomColorTex>(colorPicker3);
+                                                    customOverrides[eeName] = oldOverrides;
+                                                    EntityPartStorage.perSave.CustomColorsByName[pickedUnit.UniqueId] = customOverrides;
+                                                    EntityPartStorage.SavePerSaveSettings();
+                                                    SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
+                                                }
+                                            }
+                                            */
                                         }
                                         GetClothColorsProfile(entry, out var colorPresets, false);
                                         if (colorPresets != null) {
@@ -431,16 +464,21 @@ static class Main {
     public static int width1 = 1;
     public static int height2 = 1;
     public static int width2 = 1;
+    public static int height3 = 1;
+    public static int width3 = 1;
     public static bool doClamp = true;
     public static bool doRepeat = false;
-    public static bool ColorPickerGUI(bool isPrimary) {
+    public static bool ColorPickerGUI(int ColorPicker) {
         CustomColor current;
-        if (isPrimary) {
+        if (ColorPicker == 1) {
             ColorPickerGrid(ref colorPicker1, ref colorPicker1col, ref height1, ref width1);
             current = colorPicker1.colors[colorPicker1col];
-        } else {
+        } else if (ColorPicker == 2) {
             ColorPickerGrid(ref colorPicker2, ref colorPicker2col, ref height2, ref width2);
             current = colorPicker2.colors[colorPicker2col];
+        } else {
+            ColorPickerGrid(ref colorPicker3, ref colorPicker3col, ref height3, ref width3);
+            current = colorPicker3.colors[colorPicker3col];
         }
         using (new GUILayout.HorizontalScope()) {
             GUILayout.Space(20);
@@ -639,10 +677,10 @@ static class Main {
     [HarmonyPatch(typeof(EquipmentEntity), nameof(EquipmentEntity.RepaintTextures), [typeof(EquipmentEntity.PaintedTextures), typeof(int), typeof(int)])]
     internal static class EquipmentEntity_RepaintTextures_Patch {
         internal static string currentUID;
-        internal static (CustomColorTex, CustomColorTex) customOverride = (null, null);
+        internal static (CustomColorTex, CustomColorTex, CustomColorTex) customOverride = (null, null, null);
         [HarmonyPrefix]
         private static void RepaintRextures(EquipmentEntity __instance, EquipmentEntity.PaintedTextures paintedTextures, ref int primaryRampIndex,ref int secondaryRampIndex) {
-            customOverride = (null, null);
+            customOverride = (null, null, null);
             if (currentUID == null) {
                 log.Log(new System.Diagnostics.StackTrace().ToString());
                 return;
@@ -665,7 +703,7 @@ static class Main {
                     return;
                 }
                 if (overrides2.TryGetValue(eeName, out var customColor)) {
-                    customOverride = (customColor.Item1, customColor.Item2);
+                    customOverride = (customColor.Item1, customColor.Item2, customColor.Item3);
                 }
             }
         }
@@ -674,35 +712,31 @@ static class Main {
     internal static class CharacterTextureDescription_Repaint_Patch {
         private static Texture2D prim = null;
         private static Texture2D sec = null;
-        private static Dictionary<CustomColorTex, Texture2D> texCache = new();
+        private static Texture2D main = null;
         [HarmonyPrefix]
         private static void RepaintPre(CharacterTextureDescription __instance, RenderTexture rtToPaint, ref Texture2D primaryRamp, ref Texture2D secondaryRamp) {
             var ov = EquipmentEntity_RepaintTextures_Patch.customOverride;
             prim = primaryRamp;
             sec = secondaryRamp;
+            main = __instance.ActiveTexture;
             if (ov.Item1 != null) {
-                if (texCache.ContainsKey(ov.Item1)) {
-                    primaryRamp = texCache[ov.Item1];
-                } else {
-                    primaryRamp = ov.Item1.MakeTex();
-                    texCache[ov.Item1] = primaryRamp;
-                }
+                primaryRamp = ov.Item1.MakeTex();
             }
             if (ov.Item2 != null) {
-                if (texCache.ContainsKey(ov.Item2)) {
-                    secondaryRamp = texCache[ov.Item2];
-                } else {
-                    secondaryRamp = ov.Item2.MakeTex();
-                    texCache[ov.Item2] = secondaryRamp;
-                }
+                secondaryRamp = ov.Item2.MakeTex();
+            }
+            if (ov.Item3 != null) {
+                __instance.ActiveTexture = ov.Item3.MakeTex();
             }
         }
         [HarmonyPostfix]
         private static void RepaintPost(CharacterTextureDescription __instance, ref Texture2D primaryRamp, ref Texture2D secondaryRamp) {
             primaryRamp = prim;
             secondaryRamp = sec;
+            __instance.ActiveTexture = main;
             prim = null;
             sec = null;
+            main = null;
         }
     }
     [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.SetupUnit))]
@@ -814,6 +848,17 @@ static class Main {
         GUILayout.Space(height / 3f);
         using (new GUILayout.VerticalScope()) {
             GUILayout.Space(5);
+        }
+    }
+    [HarmonyPatch(typeof(Traverse), nameof(Traverse.SetValue))]
+    public static class Traverse_SetValue_Patch {
+        [HarmonyFinalizer]
+        public static Exception Catch(Exception __exception, Traverse __instance, ref Traverse __result) {
+            if (__exception is FieldAccessException) {
+                __result = __instance;
+                return null;
+            }
+            return __exception;
         }
     }
 

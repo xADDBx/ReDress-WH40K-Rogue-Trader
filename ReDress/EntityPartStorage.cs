@@ -15,7 +15,7 @@ namespace ReDress {
     public static class EntityPartStorage {
         public class CustomColor {
             [JsonIgnore]
-            public static Texture2D CachedTex = new Texture2D(1, 1, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
+            public static Texture2D CachedTex;
             [JsonProperty]
             public float R;
             [JsonProperty]
@@ -30,7 +30,9 @@ namespace ReDress {
                 return $"R: {Mathf.RoundToInt(R * 255)}, G: {Mathf.RoundToInt(G * 255)}, B: {Mathf.RoundToInt(B * 255)}";
             }
             public Texture2D MakeBoxTex() {
-                CachedTex.wrapMode = TextureWrapMode.Clamp;
+                if (CachedTex == null) {
+                    CachedTex = new(1, 1, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+                }
                 CachedTex.SetPixels([this]);
                 CachedTex.Apply();
                 return CachedTex;
@@ -38,7 +40,7 @@ namespace ReDress {
         }
         public class CustomColorTex {
             [JsonIgnore]
-            public static Dictionary<(int, int), Texture2D> CachedTextures = new();
+            public static Dictionary<(int, int), Texture2D> CachedTextures;
             [JsonProperty]
             public int height = 1;
             [JsonProperty]
@@ -58,7 +60,8 @@ namespace ReDress {
                 colors = [c];
             }
             public Texture2D MakeTex() {
-                if (!CachedTextures.TryGetValue((width, height), out var CachedTex)) {
+                CachedTextures ??= new();
+                if (!CachedTextures.TryGetValue((width, height), out var CachedTex) || CachedTex == null) {
                     CachedTex = new Texture2D(width, height, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
                     CachedTextures[(width, height)] = CachedTex;
                 }
@@ -90,7 +93,7 @@ namespace ReDress {
             [JsonProperty]
             public Dictionary<string, Dictionary<string, (CustomColor, CustomColor)>> CustomColorByName = new();
             [JsonProperty]
-            public Dictionary<string, Dictionary<string, (CustomColorTex, CustomColorTex)>> CustomColorsByName = new();
+            public Dictionary<string, Dictionary<string, (CustomColorTex, CustomColorTex, CustomColorTex, CustomColorTex, CustomColorTex, CustomColorTex)>> CustomColorsByName = new();
             [JsonProperty]
             public Dictionary<string, bool> NakedFlag = new();
         }
@@ -115,10 +118,11 @@ namespace ReDress {
                     foreach (var charEntry in cachedPerSave.CustomColorByName) {
                         cachedPerSave.CustomColorsByName[charEntry.Key] = new();
                         foreach (var itemEntry in charEntry.Value) {
-                            cachedPerSave.CustomColorsByName[charEntry.Key][itemEntry.Key] = (new(itemEntry.Value.Item1), new(itemEntry.Value.Item2));
+                            cachedPerSave.CustomColorsByName[charEntry.Key][itemEntry.Key] = (new(itemEntry.Value.Item1), new(itemEntry.Value.Item2), null, null, null, null);
                         }
                     }
                     cachedPerSave.CustomColorByName = null;
+                    SavePerSaveSettings();
                 }
 #pragma warning restore CS0612 // Type or member is obsolete
             }
