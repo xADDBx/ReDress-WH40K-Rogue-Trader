@@ -30,6 +30,7 @@ using Owlcat.Runtime.Visual.Overrides.HBAO;
 using UnityEngine.Device;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.UI.Common;
+using Kingmaker.Utility.DotNetExtensions;
 
 namespace ReDress;
 
@@ -85,8 +86,10 @@ static class Main {
     internal static bool ShouldShowCustomPrimary = false;
     internal static bool ShouldShowCustomSecondary = false;
     internal static bool shouldOpenColorSection = false;
-    internal static CustomColor colorPicker1 = null;
-    internal static CustomColor colorPicker2 = null;
+    internal static CustomColorTex colorPicker1 = null;
+    internal static CustomColorTex colorPicker2 = null;
+    internal static int colorPicker1col = 0;
+    internal static int colorPicker2col = 0;
     internal static string colorPickerItem = "";
     internal static Browser<(string, string), (string, string)> includeBrowser = new(true);
     internal static Browser<Texture2D, Texture2D> rampOverrideBrowser = new(true);
@@ -117,6 +120,10 @@ static class Main {
             }
         } else {
             try {
+                if (EntityPartStorage.CustomColor.TextureCache.Count > 1000) {
+                    EntityPartStorage.CustomColor.TextureCache.ForEach(i => MonoBehaviour.Destroy(i.Value));
+                    EntityPartStorage.CustomColor.TextureCache = new();
+                }
                 shouldOpenGuide = GUILayout.Toggle(shouldOpenGuide, "Show Guide", GUILayout.ExpandWidth(false));
                 if (Event.current.type == EventType.Layout) {
                     openedGuide = shouldOpenGuide;
@@ -306,7 +313,7 @@ static class Main {
                         using (new GUILayout.HorizontalScope()) {
                             GUILayout.Space(25);
                             EntityPartStorage.perSave.RampOverrideByName.TryGetValue(pickedUnit.UniqueId, out var overrides);
-                            EntityPartStorage.perSave.CustomColorByName.TryGetValue(pickedUnit.UniqueId, out var customOverrides);
+                            EntityPartStorage.perSave.CustomColorsByName.TryGetValue(pickedUnit.UniqueId, out var customOverrides);
                             overrides ??= new();
                             customOverrides ??= new();
                             using (new GUILayout.VerticalScope()) {
@@ -319,7 +326,7 @@ static class Main {
                                             if (customOverrides.ContainsKey(eeName)) {
                                                 if (GUILayout.Button("Remove Custom Color Override", GUILayout.ExpandWidth(false))) {
                                                     customOverrides.Remove(eeName);
-                                                    EntityPartStorage.perSave.CustomColorByName[pickedUnit.UniqueId] = customOverrides;
+                                                    EntityPartStorage.perSave.CustomColorsByName[pickedUnit.UniqueId] = customOverrides;
                                                     EntityPartStorage.SavePerSaveSettings();
                                                 }
                                             }
@@ -335,13 +342,16 @@ static class Main {
                                             }
                                             if (ShouldShowCustomPrimary) {
                                                 if (colorPicker1 == null) {
-                                                    colorPicker1 = oldOverrides.Item1 ?? new();
+                                                    colorPicker1 = oldOverrides.Item1 ?? new(doClamp ? TextureWrapMode.Clamp : TextureWrapMode.Repeat);
+                                                    width1 = colorPicker1.width;
+                                                    height1 = colorPicker1.height;
+                                                    colorPicker1col = 0;
                                                 }
                                                 showPrimaryForEE = eeName;
                                                 if (ColorPickerGUI(true)) {
-                                                    oldOverrides.Item1 = AccessTools.MakeDeepCopy<CustomColor>(colorPicker1);
+                                                    oldOverrides.Item1 = AccessTools.MakeDeepCopy<CustomColorTex>(colorPicker1);
                                                     customOverrides[eeName] = oldOverrides;
-                                                    EntityPartStorage.perSave.CustomColorByName[pickedUnit.UniqueId] = customOverrides;
+                                                    EntityPartStorage.perSave.CustomColorsByName[pickedUnit.UniqueId] = customOverrides;
                                                     EntityPartStorage.SavePerSaveSettings();
                                                     SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
                                                 }
@@ -357,13 +367,16 @@ static class Main {
                                             }
                                             if (ShouldShowCustomSecondary) {
                                                 if (colorPicker2 == null) {
-                                                    colorPicker2 = oldOverrides.Item2 ?? new();
+                                                    colorPicker2 = oldOverrides.Item2 ?? new(doClamp ? TextureWrapMode.Clamp : TextureWrapMode.Repeat);
+                                                    width2 = colorPicker2.width;
+                                                    height2 = colorPicker2.height;
+                                                    colorPicker2col = 0;
                                                 }
                                                 showSecondaryForEE = eeName;
                                                 if (ColorPickerGUI(false)) {
-                                                    oldOverrides.Item2 = AccessTools.MakeDeepCopy<CustomColor>(colorPicker2);
+                                                    oldOverrides.Item2 = AccessTools.MakeDeepCopy<CustomColorTex>(colorPicker2);
                                                     customOverrides[eeName] = oldOverrides;
-                                                    EntityPartStorage.perSave.CustomColorByName[pickedUnit.UniqueId] = customOverrides;
+                                                    EntityPartStorage.perSave.CustomColorsByName[pickedUnit.UniqueId] = customOverrides;
                                                     EntityPartStorage.SavePerSaveSettings();
                                                     SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
                                                 }
@@ -418,33 +431,108 @@ static class Main {
         colorPreset = null;
         return null;
     }
+    public static int height1 = 1;
+    public static int width1 = 1;
+    public static int height2 = 1;
+    public static int width2 = 1;
+    public static bool doClamp = true;
+    public static bool doRepeat = false;
     public static bool ColorPickerGUI(bool isPrimary) {
-        CustomColor current = isPrimary ? colorPicker1 : colorPicker2;
+        CustomColor current;
+        if (isPrimary) {
+            ColorPickerGrid(ref colorPicker1, ref colorPicker1col, ref height1, ref width1);
+            current = colorPicker1.colors[colorPicker1col];
+        } else {
+            ColorPickerGrid(ref colorPicker2, ref colorPicker2col, ref height2, ref width2);
+            current = colorPicker2.colors[colorPicker2col];
+        }
         using (new GUILayout.HorizontalScope()) {
             GUILayout.Space(20);
             using (new GUILayout.VerticalScope()) {
                 GUILayout.Label("Custom RGB Color Picker");
 
                 GUILayout.Label("Red: " + Mathf.RoundToInt(current.R * 255), GUILayout.ExpandWidth(false));
-                current.R = GUILayout.HorizontalSlider(current.R, 0f, 1f, GUILayout.Width(250));
+                current.R = GUILayout.HorizontalSlider(current.R, 0f, 1f, GUILayout.Width(500));
 
                 GUILayout.Label("Green: " + Mathf.RoundToInt(current.G * 255), GUILayout.ExpandWidth(false));
-                current.G = GUILayout.HorizontalSlider(current.G, 0f, 1f, GUILayout.Width(250));
+                current.G = GUILayout.HorizontalSlider(current.G, 0f, 1f, GUILayout.Width(500));
 
                 GUILayout.Label("Blue: " + Mathf.RoundToInt(current.B * 255), GUILayout.ExpandWidth(false));
-                current.B = GUILayout.HorizontalSlider(current.B, 0f, 1f, GUILayout.Width(250));
+                current.B = GUILayout.HorizontalSlider(current.B, 0f, 1f, GUILayout.Width(500));
 
-                // Display the currently picked color
+                /*
                 GUILayout.Label("Picked Color");
                 GUIStyle colorStyle = new GUIStyle(GUI.skin.box);
                 colorStyle.normal.background = MakeTex(2, 2, current);
                 GUILayout.Box(GUIContent.none, colorStyle, GUILayout.Width(100), GUILayout.Height(100));
+                */
                 if (GUILayout.Button("Apply Custom Color", GUILayout.ExpandWidth(false))) {
                     return true;
                 }
                 return false;
             }
         }
+    }
+    public static void ColorPickerGrid(ref CustomColorTex customColors, ref int customColorIndex, ref int height, ref int width) {
+        using (new GUILayout.HorizontalScope()) {
+            GUILayout.Label("Texture Height: ", GUILayout.ExpandWidth(false));
+            IntTextField(ref height, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
+        }
+        using (new GUILayout.HorizontalScope()) {
+            GUILayout.Label("Texture Width: ", GUILayout.ExpandWidth(false));
+            IntTextField(ref width, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
+        }
+        using (new GUILayout.HorizontalScope()) {
+            bool changed = false;
+            if (GUILayout.Toggle(doClamp, "Clamp Texture", GUILayout.ExpandWidth(false))) {
+                doClamp = true;
+                doRepeat = false;
+                changed = true;
+            }
+            if (GUILayout.Toggle(doRepeat, "Repeat Texture", GUILayout.ExpandWidth(false))) {
+                doClamp = false;
+                doRepeat = true;
+                changed = true;
+            }
+            if (changed) {
+                customColors.wrapMode = doClamp ? TextureWrapMode.Clamp : TextureWrapMode.Repeat;
+            }
+        }
+        customColors.height = height;
+        customColors.width = width;
+        customColors.colors ??= new();
+        while (customColors.colors.Count < width * height) {
+            customColors.colors.Add(new());
+        }
+        while (customColors.colors.Count > width * height) {
+            customColors.colors.Remove(customColors.colors.Last());
+        }
+        using (new GUILayout.VerticalScope()) {
+            for (int i = 0; i < height; i++) {
+                using (new GUILayout.HorizontalScope()) {
+                    GUILayout.Space(20);
+                    for (int j = 0; j < width; j++) {
+                        GUIStyle colorStyle = new GUIStyle(GUI.skin.box);
+                        int ind = i * width + j;
+                        colorStyle.normal.background = customColors.colors[ind].MakeBoxTex();
+                        int size = customColorIndex == ind ? 60 : 50;
+                        if (GUILayout.Button(GUIContent.none, colorStyle, GUILayout.Width(size), GUILayout.Height(size))) {
+                            customColorIndex = ind;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    public static bool IntTextField(ref int value, params GUILayoutOption[] options) {
+        var text = GUILayout.TextField(value.ToString(), options);
+        if (int.TryParse(text, out var num)) {
+            if (num != value) {
+                value = num;
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void SetColorPair(EquipmentEntity ee, RampColorPreset.IndexSet pair) {
@@ -551,7 +639,7 @@ static class Main {
     [HarmonyPatch(typeof(EquipmentEntity), nameof(EquipmentEntity.RepaintTextures), [typeof(EquipmentEntity.PaintedTextures), typeof(int), typeof(int)])]
     internal static class EquipmentEntity_RepaintTextures_Patch {
         internal static string currentUID;
-        internal static (CustomColor, CustomColor) customOverride = (null, null);
+        internal static (CustomColorTex, CustomColorTex) customOverride = (null, null);
         [HarmonyPrefix]
         private static void RepaintRextures(EquipmentEntity __instance, EquipmentEntity.PaintedTextures paintedTextures, ref int primaryRampIndex,ref int secondaryRampIndex) {
             customOverride = (null, null);
@@ -570,7 +658,7 @@ static class Main {
                     secondaryRampIndex = pair.SecondaryIndex;
                 }
             }
-            if (EntityPartStorage.perSave.CustomColorByName.TryGetValue(currentUID, out var overrides2)) {
+            if (EntityPartStorage.perSave.CustomColorsByName.TryGetValue(currentUID, out var overrides2)) {
                 var eeName = __instance.name ?? __instance.ToString();
                 if (eeName == null) {
                     log.Log(new System.Diagnostics.StackTrace().ToString());
@@ -586,7 +674,7 @@ static class Main {
     internal static class CharacterTextureDescription_Repaint_Patch {
         private static Texture2D prim = null;
         private static Texture2D sec = null;
-        private static Dictionary<CustomColor, Texture2D> texCache = new();
+        private static Dictionary<CustomColorTex, Texture2D> texCache = new();
         [HarmonyPrefix]
         private static void RepaintPre(CharacterTextureDescription __instance, RenderTexture rtToPaint, ref Texture2D primaryRamp, ref Texture2D secondaryRamp) {
             var ov = EquipmentEntity_RepaintTextures_Patch.customOverride;
@@ -596,7 +684,7 @@ static class Main {
                 if (texCache.ContainsKey(ov.Item1)) {
                     primaryRamp = texCache[ov.Item1];
                 } else {
-                    primaryRamp = MakeTex(1, 1, ov.Item1);
+                    primaryRamp = ov.Item1.MakeTex();
                     texCache[ov.Item1] = primaryRamp;
                 }
             }
@@ -604,7 +692,7 @@ static class Main {
                 if (texCache.ContainsKey(ov.Item2)) {
                     secondaryRamp = texCache[ov.Item2];
                 } else {
-                    secondaryRamp = MakeTex(1, 1, ov.Item2);
+                    secondaryRamp = ov.Item2.MakeTex();
                     texCache[ov.Item2] = secondaryRamp;
                 }
             }
@@ -696,17 +784,6 @@ static class Main {
            .GetField(val.ToString())
            .GetCustomAttributes(typeof(DescriptionAttribute), false);
         return attributes.Length > 0 ? attributes[0].Description : string.Empty;
-    }
-    public static Texture2D MakeTex(int width, int height, Color col) {
-        Color[] pix = new Color[width * height];
-        for (int i = 0; i < pix.Length; i++) {
-            pix[i] = col;
-        }
-        Texture2D result = new Texture2D(width, height, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
-        result.wrapMode = TextureWrapMode.Clamp;
-        result.SetPixels(pix);
-        result.Apply();
-        return result;
     }
     public static void DrawDiv() {
         using (new GUILayout.VerticalScope()) {

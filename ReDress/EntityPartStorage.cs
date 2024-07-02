@@ -10,10 +10,12 @@ using static ReDress.Main;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Visual.CharacterSystem;
 using UnityEngine;
+using System.Drawing.Drawing2D;
 
 namespace ReDress {
     public static class EntityPartStorage {
         public class CustomColor {
+            public static Dictionary<(float, float, float), Texture2D> TextureCache = new();
             public float R;
             public float G;
             public float B;
@@ -23,6 +25,49 @@ namespace ReDress {
             }
             public override string ToString() {
                 return $"R: {Mathf.RoundToInt(R * 255)}, G: {Mathf.RoundToInt(G * 255)}, B: {Mathf.RoundToInt(B * 255)}";
+            }
+            public Texture2D MakeBoxTex() {
+                if (TextureCache.TryGetValue((R, G, B), out Texture2D tex)) {
+                    return tex;
+                } else {
+                    Texture2D result = new Texture2D(1, 1, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
+                    result.wrapMode = TextureWrapMode.Clamp;
+                    result.SetPixels([this]);
+                    result.Apply();
+                    TextureCache.Add((R, G, B), result);
+                    return result;
+                }
+            }
+        }
+        public class CustomColorTex {
+            public int height = 1;
+            public int width = 1;
+            public List<CustomColor> colors;
+            public TextureWrapMode wrapMode = TextureWrapMode.Clamp;
+            public CustomColorTex() {
+
+            }
+            public CustomColorTex(TextureWrapMode wrapMode) {
+                colors = [];
+                this.wrapMode = wrapMode;
+            }
+            public CustomColorTex(CustomColor c) {
+                colors = [c];
+            }
+            public Texture2D MakeTex() {
+                Color[] pix = new Color[width * height];
+                for (int i = 0; i < pix.Length; i++) {
+                    pix[i] = colors[i];
+                }
+                Texture2D result = new Texture2D(width, height, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
+                result.wrapMode = wrapMode;
+                result.SetPixels(pix);
+                // Maybe result.Compress() if size > 1x1?
+                result.Apply();
+                return result;
+            }
+            public override string ToString() {
+                return $"{height}x{width} Texture with {wrapMode} mode.";
             }
         }
         public class PerSaveSettings : EntityPart {
@@ -35,8 +80,11 @@ namespace ReDress {
             public Dictionary<string, HashSet<string>> IncludeByName = new();
             [JsonProperty]
             public Dictionary<string, Dictionary<string, RampColorPreset.IndexSet>> RampOverrideByName = new();
+            [Obsolete]
             [JsonProperty]
             public Dictionary<string, Dictionary<string, (CustomColor, CustomColor)>> CustomColorByName = new();
+            [JsonProperty]
+            public Dictionary<string, Dictionary<string, (CustomColorTex, CustomColorTex)>> CustomColorsByName = new();
             [JsonProperty]
             public Dictionary<string, bool> NakedFlag = new();
         }
@@ -55,6 +103,18 @@ namespace ReDress {
             if (cachedPerSave == null) {
                 cachedPerSave = new PerSaveSettings();
                 SavePerSaveSettings();
+            } else {
+#pragma warning disable CS0612 // Type or member is obsolete
+                if (cachedPerSave.CustomColorByName != null) {
+                    foreach (var charEntry in cachedPerSave.CustomColorByName) {
+                        cachedPerSave.CustomColorsByName[charEntry.Key] = new();
+                        foreach (var itemEntry in charEntry.Value) {
+                            cachedPerSave.CustomColorsByName[charEntry.Key][itemEntry.Key] = (new(itemEntry.Value.Item1), new(itemEntry.Value.Item2));
+                        }
+                    }
+                    cachedPerSave.CustomColorByName = null;
+                }
+#pragma warning restore CS0612 // Type or member is obsolete
             }
         }
         public static void SavePerSaveSettings() {
