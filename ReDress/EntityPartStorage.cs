@@ -14,9 +14,13 @@ using UnityEngine;
 namespace ReDress {
     public static class EntityPartStorage {
         public class CustomColor {
+            [JsonIgnore]
             public static Dictionary<(float, float, float), Texture2D> TextureCache = new();
+            [JsonProperty]
             public float R;
+            [JsonProperty]
             public float G;
+            [JsonProperty]
             public float B;
 
             public static implicit operator UnityEngine.Color(CustomColor c) {
@@ -39,10 +43,15 @@ namespace ReDress {
             }
         }
         public class CustomColorTex {
+            [JsonIgnore]
             public static Dictionary<CustomColorTex, Texture2D> TextureCache = new();
+            [JsonProperty]
             public int height = 1;
+            [JsonProperty]
             public int width = 1;
+            [JsonProperty]
             public List<CustomColor> colors;
+            [JsonProperty]
             public TextureWrapMode wrapMode = TextureWrapMode.Clamp;
             public CustomColorTex() {
 
