@@ -26,12 +26,8 @@ using Kingmaker.PubSubSystem;
 using Microsoft.Cci.Pdb;
 using Kingmaker.UI.DollRoom;
 using static ReDress.EntityPartStorage;
-using Owlcat.Runtime.Visual.Overrides.HBAO;
-using UnityEngine.Device;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.UI.Common;
-using Kingmaker.Utility.DotNetExtensions;
-using static Kingmaker.Visual.Sound.SoundEventsEmitter;
 
 namespace ReDress;
 
@@ -755,7 +751,7 @@ static class Main {
             var tmp = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
             if (tmp != null) EquipmentEntity_RepaintTextures_Patch.currentUID = tmp;
             if (__instance.IsInDollRoom) {
-                tmp = UIDollRooms.Instance.CharacterDollRoom.m_OriginalAvatar.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
+                tmp = UIDollRooms.Instance.CharacterDollRoom?.m_OriginalAvatar?.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
                 if (tmp != null) EquipmentEntity_RepaintTextures_Patch.currentUID = tmp;
             }
         }
