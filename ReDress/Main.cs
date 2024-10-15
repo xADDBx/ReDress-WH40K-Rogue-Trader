@@ -294,7 +294,8 @@ static class Main {
                                                     EntityPartStorage.perSave.IncludeByName[pickedUnit.UniqueId] = tmpIncludes;
                                                     EntityPartStorage.SavePerSaveSettings();
                                                 }
-                                                GUILayout.TextArea($"    {eeName}", GUILayout.ExpandWidth(false));
+                                                string itemName = settings.AssetIds.Where(t => t.Item1 == eeName).Select(t => t.Item2).FirstOrDefault();
+                                                GUILayout.Label($"    {itemName}", GUILayout.ExpandWidth(false));
                                             }
                                         }
                                     }
