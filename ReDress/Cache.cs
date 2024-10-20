@@ -9,11 +9,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static Kingmaker.UnitLogic.Buffs.Components.DOTLogic;
 
 namespace ReDress {
     public static class Cache {
-        public static bool needsCacheRebuilt => (GameVersion.GetVersion() != Main.settings.CachedVersion) && !isRebuilding;
+        public static bool NeedsCacheRebuilt => (GameVersion.GetVersion() != Main.settings.CachedVersion) && !isRebuilding;
         public static bool isRebuilding = false;
         internal static void RebuildCache() {
             isRebuilding = true;
@@ -28,6 +27,15 @@ namespace ReDress {
             Main.settings.CachedVersion = GameVersion.GetVersion();
             Main.settings.Save(Main.mod);
             isRebuilding = false;
+        }
+        [HarmonyPatch(typeof(GameMainMenu))]
+        public static class RebuildCachePatch {
+            [HarmonyPatch(nameof(GameMainMenu.Start)), HarmonyPostfix]
+            public static void Start() {
+                if (NeedsCacheRebuilt) {
+                    RebuildCache();
+                }
+            }
         }
     }
 }

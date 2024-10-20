@@ -183,81 +183,78 @@ static class Main {
                         using (new GUILayout.HorizontalScope()) {
                             GUILayout.Space(25);
                             using (new GUILayout.VerticalScope()) {
-                            GUILayout.Label("Set Outfit to the following:", GUILayout.ExpandWidth(false));
-                            Outfit[] outfits = (Outfit[])Enum.GetValues(typeof(Outfit));
-                            var selectedIndex2 = Array.IndexOf(outfits, selectedOutfit);
-                            newIndex = GUILayout.SelectionGrid(selectedIndex2, outfits.Select(m => m.ToDescriptionString()).ToArray(), 5);
-                            if (selectedIndex2 != newIndex) {
-                                selectedOutfit = outfits[newIndex];
-                                if (selectedOutfit == Outfit.Naked) {
-                                    EntityPartStorage.perSave.AddClothes.Remove(pickedUnit.UniqueId);
-                                    EntityPartStorage.perSave.NakedFlag[pickedUnit.UniqueId] = true;
-                                } else {
-                                    var kee = ResourcesLibrary.BlueprintsCache.Load(JobClothesIDs[selectedOutfit]) as KingmakerEquipmentEntity;
-                                    EntityPartStorage.perSave.AddClothes[pickedUnit.UniqueId] = pickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? kee.m_MaleArray.Select(f => f.AssetId).ToList() : kee.m_FemaleArray.Select(f => f.AssetId).ToList();
-                                    EntityPartStorage.perSave.NakedFlag.Remove(pickedUnit.UniqueId);
-                                }
-                                EntityPartStorage.SavePerSaveSettings();
-                            }
-
-                            DrawDiv();
-                            if (GUILayout.Button("Reset Outfit", GUILayout.ExpandWidth(false))) {
-                                EntityPartStorage.perSave.AddClothes.Remove(pickedUnit.UniqueId);
-                                EntityPartStorage.perSave.NakedFlag.Remove(pickedUnit.UniqueId);
-                                EntityPartStorage.SavePerSaveSettings();
-                            }
-
-                            DrawDiv();
-                            shouldOpenExclude = GUILayout.Toggle(shouldOpenExclude, "Show Exclude Section", GUILayout.ExpandWidth(false));
-                            if (Event.current.type == EventType.Layout) {
-                                openedExclude = shouldOpenExclude;
-                            }
-
-                            if (openedExclude) {
-                                if (GUILayout.Button("Reset Excludes", GUILayout.ExpandWidth(false))) {
-                                    EntityPartStorage.perSave.ExcludeByName.Remove(pickedUnit.UniqueId);
+                                GUILayout.Label("Set Outfit to the following:", GUILayout.ExpandWidth(false));
+                                Outfit[] outfits = (Outfit[])Enum.GetValues(typeof(Outfit));
+                                var selectedIndex2 = Array.IndexOf(outfits, selectedOutfit);
+                                newIndex = GUILayout.SelectionGrid(selectedIndex2, outfits.Select(m => m.ToDescriptionString()).ToArray(), 5);
+                                if (selectedIndex2 != newIndex) {
+                                    selectedOutfit = outfits[newIndex];
+                                    if (selectedOutfit == Outfit.Naked) {
+                                        EntityPartStorage.perSave.AddClothes.Remove(pickedUnit.UniqueId);
+                                        EntityPartStorage.perSave.NakedFlag[pickedUnit.UniqueId] = true;
+                                    } else {
+                                        var kee = ResourcesLibrary.BlueprintsCache.Load(JobClothesIDs[selectedOutfit]) as KingmakerEquipmentEntity;
+                                        EntityPartStorage.perSave.AddClothes[pickedUnit.UniqueId] = pickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? kee.m_MaleArray.Select(f => f.AssetId).ToList() : kee.m_FemaleArray.Select(f => f.AssetId).ToList();
+                                        EntityPartStorage.perSave.NakedFlag.Remove(pickedUnit.UniqueId);
+                                    }
                                     EntityPartStorage.SavePerSaveSettings();
                                 }
-                                foreach (var ee in pickedUnit.View.CharacterAvatar.EquipmentEntities.Union(pickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
-                                    using (new GUILayout.HorizontalScope()) {
-                                        if (GUILayout.Button("Exclude", GUILayout.ExpandWidth(false))) {
-                                            EntityPartStorage.perSave.ExcludeByName.TryGetValue(pickedUnit.UniqueId, out var tmpExcludes);
-                                            if (tmpExcludes == null) tmpExcludes = new();
-                                            tmpExcludes.Add(ee.name);
-                                            EntityPartStorage.perSave.ExcludeByName[pickedUnit.UniqueId] = tmpExcludes;
-                                            EntityPartStorage.SavePerSaveSettings();
-                                        }
-                                        GUILayout.Label($"    {ee?.name ?? "Null????????????"}");
-                                    }
+
+                                DrawDiv();
+                                if (GUILayout.Button("Reset Outfit", GUILayout.ExpandWidth(false))) {
+                                    EntityPartStorage.perSave.AddClothes.Remove(pickedUnit.UniqueId);
+                                    EntityPartStorage.perSave.NakedFlag.Remove(pickedUnit.UniqueId);
+                                    EntityPartStorage.SavePerSaveSettings();
                                 }
-                                GUILayout.Label("------------------------------------------");
-                                GUILayout.Label("Current Excludes:");
-                                EntityPartStorage.perSave.ExcludeByName.TryGetValue(pickedUnit.UniqueId, out var currentExcludes);
-                                if (currentExcludes?.Count > 0) {
-                                    foreach (var eeName in currentExcludes.ToList()) {
+
+                                DrawDiv();
+                                shouldOpenExclude = GUILayout.Toggle(shouldOpenExclude, "Show Exclude Section", GUILayout.ExpandWidth(false));
+                                if (Event.current.type == EventType.Layout) {
+                                    openedExclude = shouldOpenExclude;
+                                }
+
+                                if (openedExclude) {
+                                    if (GUILayout.Button("Reset Excludes", GUILayout.ExpandWidth(false))) {
+                                        EntityPartStorage.perSave.ExcludeByName.Remove(pickedUnit.UniqueId);
+                                        EntityPartStorage.SavePerSaveSettings();
+                                    }
+                                    foreach (var ee in pickedUnit.View.CharacterAvatar.EquipmentEntities.Union(pickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
                                         using (new GUILayout.HorizontalScope()) {
-                                            if (GUILayout.Button("Remove Exclusion", GUILayout.ExpandWidth(false))) {
+                                            if (GUILayout.Button("Exclude", GUILayout.ExpandWidth(false))) {
                                                 EntityPartStorage.perSave.ExcludeByName.TryGetValue(pickedUnit.UniqueId, out var tmpExcludes);
                                                 if (tmpExcludes == null) tmpExcludes = new();
-                                                tmpExcludes.Remove(eeName);
+                                                tmpExcludes.Add(ee.name);
                                                 EntityPartStorage.perSave.ExcludeByName[pickedUnit.UniqueId] = tmpExcludes;
                                                 EntityPartStorage.SavePerSaveSettings();
                                             }
-                                            GUILayout.Label($"    {eeName}");
+                                            GUILayout.Label($"    {ee?.name ?? "Null????????????"}");
+                                        }
+                                    }
+                                    GUILayout.Label("------------------------------------------");
+                                    GUILayout.Label("Current Excludes:");
+                                    EntityPartStorage.perSave.ExcludeByName.TryGetValue(pickedUnit.UniqueId, out var currentExcludes);
+                                    if (currentExcludes?.Count > 0) {
+                                        foreach (var eeName in currentExcludes.ToList()) {
+                                            using (new GUILayout.HorizontalScope()) {
+                                                if (GUILayout.Button("Remove Exclusion", GUILayout.ExpandWidth(false))) {
+                                                    EntityPartStorage.perSave.ExcludeByName.TryGetValue(pickedUnit.UniqueId, out var tmpExcludes);
+                                                    if (tmpExcludes == null) tmpExcludes = new();
+                                                    tmpExcludes.Remove(eeName);
+                                                    EntityPartStorage.perSave.ExcludeByName[pickedUnit.UniqueId] = tmpExcludes;
+                                                    EntityPartStorage.SavePerSaveSettings();
+                                                }
+                                                GUILayout.Label($"    {eeName}");
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            DrawDiv();
-                            GUILayout.Label("Opening the Include section might make the game freeze for a few seconds to build a cache of existing EquipmentEntities.");
-                            shouldOpenInclude = GUILayout.Toggle(shouldOpenInclude, "Show Include Section", GUILayout.ExpandWidth(false));
-                            if (shouldOpenInclude && Cache.needsCacheRebuilt) {
-                                Cache.RebuildCache();
-                            }
-                            if (Event.current.type == EventType.Layout) {
-                                openedInclude = shouldOpenInclude;
-                            }
+                                DrawDiv();
+                                GUILayout.Label("Opening the Include section might make the game freeze for a few seconds to build a cache of existing EquipmentEntities.");
+                                shouldOpenInclude = GUILayout.Toggle(shouldOpenInclude, "Show Include Section", GUILayout.ExpandWidth(false));
+                                if (Event.current.type == EventType.Layout) {
+                                    openedInclude = shouldOpenInclude;
+                                }
 
                                 if (openedInclude) {
                                     if (GUILayout.Button("Reset Includes", GUILayout.ExpandWidth(false))) {
