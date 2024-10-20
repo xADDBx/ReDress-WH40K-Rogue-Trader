@@ -278,7 +278,8 @@ static class Main {
                                                     EntityPartStorage.SavePerSaveSettings();
                                                 }
                                             }
-                                            GUILayout.Label($"    {pair1.Item2}");
+                                            GUILayout.Label($"    {pair1.Item2}", GUILayout.ExpandWidth(false));
+                                            GUILayout.TextArea($"    {pair1.Item1}", GUILayout.ExpandWidth(false));
                                         }
                                     });
                                     GUILayout.Label("------------------------------------------");
@@ -294,6 +295,8 @@ static class Main {
                                                     EntityPartStorage.perSave.IncludeByName[pickedUnit.UniqueId] = tmpIncludes;
                                                     EntityPartStorage.SavePerSaveSettings();
                                                 }
+                                                string itemName = settings.AssetIds.Where(t => t.Item1 == eeName).Select(t => t.Item2).FirstOrDefault();
+                                                GUILayout.Label($"    {itemName}", GUILayout.ExpandWidth(false));
                                                 GUILayout.TextArea($"    {eeName}", GUILayout.ExpandWidth(false));
                                             }
                                         }
