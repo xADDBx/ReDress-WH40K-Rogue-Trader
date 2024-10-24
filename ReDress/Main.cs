@@ -136,9 +136,8 @@ static class Main {
                             GUILayout.Label("To change the outfit of your companions you will probably need to manually exclude the old one. To do that you need to open the exclude section and click on \"Exclude\" for the respective outfit parts.", GUILayout.ExpandWidth(false));
                             GUILayout.Label("As an example, to change the outfit of Heinrix you need to add \"EE_BaseoutfitHeinrix...\", \"EE_CapeBaseoutfitHeinrix...\" and \"EE_PantsHeinrix...\" to the excludes.", GUILayout.ExpandWidth(false));
                             GUILayout.Label("To reset the excludes just click \"Reset Excludes\" or remove them from the \"Current Excludes\" section", GUILayout.ExpandWidth(false));
-                            GUILayout.Label("<b>For any changes to take effect you need to save and reload.</b>", GUILayout.ExpandWidth(false));
-                            GUILayout.Label("The Include Section allows you to pick from all the visual entities in the game and add them to your character.");
-                            GUILayout.Label("Together with the Exclude Section this <i>basically</i> allows building arbitrary outfits using the outfit parts built into the game.");
+                            GUILayout.Label("The Include Section allows you to pick from all the visual entities in the game and add them to your character.", GUILayout.ExpandWidth(false));
+                            GUILayout.Label("Together with the Exclude Section this <i>basically</i> allows building arbitrary outfits using the outfit parts built into the game.", GUILayout.ExpandWidth(false));
                         }
                     }
                 }
@@ -738,7 +737,7 @@ static class Main {
     [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.SetupUnit))]
     internal static class CharacterDollRoom_SetupUnit_Patch {
         [HarmonyPrefix]
-        private static void SetupUnit(BaseUnitEntity player) {
+        private static void SetupUnit(CharacterDollRoom __instance, BaseUnitEntity player) {
             var tmp = player?.UniqueId ?? null;
             if (tmp != null) EquipmentEntity_RepaintTextures_Patch.currentUID = tmp;
         }

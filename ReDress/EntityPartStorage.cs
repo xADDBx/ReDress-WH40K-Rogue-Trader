@@ -10,6 +10,11 @@ using static ReDress.Main;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.Visual.CharacterSystem;
 using UnityEngine;
+using Kingmaker.Blueprints;
+using Kingmaker.UnitLogic.Buffs.Blueprints;
+using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.UI.Common;
 
 namespace ReDress {
     public static class EntityPartStorage {
@@ -111,7 +116,7 @@ namespace ReDress {
             }
             if (cachedPerSave == null) {
                 cachedPerSave = new PerSaveSettings();
-                SavePerSaveSettings();
+                SavePerSaveSettings(false);
             } else {
 #pragma warning disable CS0612 // Type or member is obsolete
                 if (cachedPerSave.CustomColorByName != null) {
@@ -122,17 +127,33 @@ namespace ReDress {
                         }
                     }
                     cachedPerSave.CustomColorByName = null;
-                    SavePerSaveSettings();
+                    SavePerSaveSettings(false);
                 }
 #pragma warning restore CS0612 // Type or member is obsolete
             }
         }
-        public static void SavePerSaveSettings() {
+        public static void SavePerSaveSettings(bool reloadCharacterClothing = true) {
             var player = Game.Instance?.Player;
             if (player == null) return;
             if (cachedPerSave == null) ReloadPerSaveSettings();
             var json = JsonConvert.SerializeObject(cachedPerSave);
             Game.Instance.State.InGameSettings.List[PerSaveSettings.ID] = json;
+            try {
+                if (reloadCharacterClothing) {
+                    var polymorphBuff = ResourcesLibrary.BlueprintsCache.Load("b5fe711b0755440093599873b4b4caf6") as BlueprintBuff;
+                    Main.pickedUnit.Buffs.Add(polymorphBuff);
+                    Main.pickedUnit.Buffs.Remove(polymorphBuff);
+                    var unit = UIDollRooms.Instance?.CharacterDollRoom?.Unit;
+                    if (unit != null) {
+                        unit.Buffs.Add(polymorphBuff);
+                        unit.Buffs.Remove(polymorphBuff);
+                        UIDollRooms.Instance?.CharacterDollRoom.Cleanup();
+                        UIDollRooms.Instance?.CharacterDollRoom?.SetupUnit(unit);
+                    }
+                }
+            } catch (Exception ex) {
+                Main.log.Log(ex.ToString());
+            }
         }
         public static PerSaveSettings perSave {
             get {
