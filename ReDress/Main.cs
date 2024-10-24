@@ -737,7 +737,7 @@ static class Main {
     [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.SetupUnit))]
     internal static class CharacterDollRoom_SetupUnit_Patch {
         [HarmonyPrefix]
-        private static void SetupUnit(CharacterDollRoom __instance, BaseUnitEntity player) {
+        private static void SetupUnit(BaseUnitEntity player) {
             var tmp = player?.UniqueId ?? null;
             if (tmp != null) EquipmentEntity_RepaintTextures_Patch.currentUID = tmp;
         }

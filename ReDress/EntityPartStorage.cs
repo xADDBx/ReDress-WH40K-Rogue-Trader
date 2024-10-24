@@ -12,8 +12,6 @@ using Kingmaker.Visual.CharacterSystem;
 using UnityEngine;
 using Kingmaker.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
-using Kingmaker.EntitySystem.Entities;
-using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.UI.Common;
 
 namespace ReDress {
