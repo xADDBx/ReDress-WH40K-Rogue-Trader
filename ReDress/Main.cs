@@ -513,7 +513,9 @@ static class Main {
             changedSize |= IntTextField(ref width, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
         }
         if (changedSize) {
-            customColorIndex = Math.Max(customColorIndex, height * width - 1);
+            height = Math.Max(1, height);
+            width = Math.Max(1, width);
+            customColorIndex = Math.Min(customColorIndex, height * width - 1);
         }
         using (new GUILayout.HorizontalScope()) {
             bool changed = false;
