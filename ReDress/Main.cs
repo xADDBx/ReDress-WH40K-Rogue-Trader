@@ -39,6 +39,8 @@ static class Main {
     internal static Harmony HarmonyInstance;
     internal static UnityModManager.ModEntry.ModLogger log;
     internal static bool isInRoom = false;
+    internal static bool excludeNewEE = false;
+    internal static bool excludeNewEESave = false;
     public static Settings settings;
     static bool Load(UnityModManager.ModEntry modEntry) {
         log = modEntry.Logger;
@@ -50,11 +52,13 @@ static class Main {
         modEntry.OnHideGUI = OnHideGUI;
         modEntry.OnSaveGUI = OnSaveGUI;
         settings = Settings.Load<Settings>(modEntry);
+        excludeNewEESave = settings.ExcludeNewEEs;
         HarmonyInstance = new Harmony(modEntry.Info.Id);
         HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
         return true;
     }
     static void OnSaveGUI(ModEntry modEntry) {
+        settings.ExcludeNewEEs = excludeNewEESave;
         settings.Save(modEntry);
     }
 
@@ -94,7 +98,7 @@ static class Main {
     internal static int colorPicker3col = 0;
     internal static string colorPickerItem = "";
     internal static Browser<(string, string), (string, string)> includeBrowser = new(true);
-    internal static Browser<Texture2D, Texture2D> rampOverrideBrowser = new(true);
+    internal static Browser<Texture2D, Texture2D> rampOverrideBrowser = new(true);  
     static void OnHideGUI(UnityModManager.ModEntry modEntry) {
         openedGuide = false;
         openedExclude = false;
@@ -104,6 +108,8 @@ static class Main {
         openedColorSection = false;
         colorPickerItem = "";
         selectedOutfit = Outfit.Current;
+        excludeNewEE = excludeNewEESave;
+        settings.Save(modEntry);
     }
     static void OnGUI(UnityModManager.ModEntry modEntry) {
         if (Event.current.type == EventType.Layout && (error != null || shouldResetError)) {
@@ -141,6 +147,7 @@ static class Main {
                         }
                     }
                 }
+
                 DrawDiv();
                 var units = new List<BaseUnitEntity>() { Game.Instance?.Player?.MainCharacterEntity };
                 units.AddRange(Game.Instance.Player.ActiveCompanions ?? new());
@@ -301,6 +308,11 @@ static class Main {
                             }
                         }
                     }
+
+                    DrawDiv();
+                    excludeNewEESave = GUILayout.Toggle(excludeNewEESave, "Automatically exclude new items on all characters");
+                    excludeNewEE = false; //disable while gui is open
+
                     DrawDiv();
                     shouldOpenColorSection = GUILayout.Toggle(shouldOpenColorSection, "Show Color Section", GUILayout.ExpandWidth(false));
                     if (Event.current.type == EventType.Layout) {
@@ -773,10 +785,25 @@ static class Main {
         private static bool AddEquipmentEntity(Character __instance, EquipmentEntity ee) {
             try {
                 var uniqueId = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
-                if (uniqueId != null) {
+                if (uniqueId != null)
+                {
+                    if (excludeNewEE)
+                    {
+                        EntityPartStorage.perSave.ExcludeByName.TryGetValue(uniqueId, out var tmpExcludes);
+                        if (tmpExcludes == null) tmpExcludes = new();
+
+                        cachedLinks.TryGetValue(uniqueId, out var defaultClothes);
+                        if (!(defaultClothes?.Contains(ee) ?? false))
+                        {
+                            tmpExcludes.Add(ee.name);
+                            EntityPartStorage.perSave.ExcludeByName[uniqueId] = tmpExcludes;
+                            EntityPartStorage.SavePerSaveSettings(false);
+                        }
+                    }
                     EntityPartStorage.perSave.AddClothes.TryGetValue(uniqueId, out var ids);
                     EntityPartStorage.perSave.NakedFlag.TryGetValue(uniqueId, out var nakedFlag);
-                    if (ids?.Count > 0 || nakedFlag) {
+                    if (ids?.Count > 0 || nakedFlag)
+                    { 
                         cachedLinks.TryGetValue(uniqueId, out var defaultClothes);
                         if (defaultClothes?.Contains(ee) ?? false) return false;
                     }
@@ -856,6 +883,27 @@ static class Main {
                 return null;
             }
             return __exception;
+        }
+    }
+
+
+    [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.Show))]
+    public static class setEEFlagOn
+    {
+        [HarmonyPrefix]
+        public static void Show()
+        {
+            excludeNewEE = excludeNewEESave;
+        }
+    }
+
+    [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.Hide))]
+    public static class setEFlagOff
+    {
+        [HarmonyPrefix]
+        private static void Hide()
+        {
+            excludeNewEE = false;
         }
     }
 
