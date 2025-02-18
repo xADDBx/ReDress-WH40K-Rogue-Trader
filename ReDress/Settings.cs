@@ -10,6 +10,7 @@ namespace ReDress {
     public class Settings : UnityModManager.ModSettings {
         public string CachedVersion = "";
         public List<(string, string)> AssetIds = new();
+        public bool ExcludeNewEEs = false;
         public override void Save(UnityModManager.ModEntry modEntry) {
             Save(this, modEntry);
         }
