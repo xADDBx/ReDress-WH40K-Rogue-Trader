@@ -39,8 +39,8 @@ static class Main {
     internal static Harmony HarmonyInstance;
     internal static UnityModManager.ModEntry.ModLogger log;
     internal static bool isInRoom = false;
-    internal static bool excludeNewEE = false;
-    internal static bool excludeNewEESave = false;
+    internal static bool doExcludeNewEEs = false;
+    internal static bool isWindowOpen = false;
     public static Settings settings;
     static bool Load(UnityModManager.ModEntry modEntry) {
         log = modEntry.Logger;
@@ -51,14 +51,13 @@ static class Main {
         modEntry.OnGUI = OnGUI;
         modEntry.OnHideGUI = OnHideGUI;
         modEntry.OnSaveGUI = OnSaveGUI;
+        modEntry.OnShowGUI = OnShowGUI;
         settings = Settings.Load<Settings>(modEntry);
-        excludeNewEESave = settings.ExcludeNewEEs;
         HarmonyInstance = new Harmony(modEntry.Info.Id);
         HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
         return true;
     }
     static void OnSaveGUI(ModEntry modEntry) {
-        settings.ExcludeNewEEs = excludeNewEESave;
         settings.Save(modEntry);
     }
 
@@ -98,7 +97,7 @@ static class Main {
     internal static int colorPicker3col = 0;
     internal static string colorPickerItem = "";
     internal static Browser<(string, string), (string, string)> includeBrowser = new(true);
-    internal static Browser<Texture2D, Texture2D> rampOverrideBrowser = new(true);  
+    internal static Browser<Texture2D, Texture2D> rampOverrideBrowser = new(true);
     static void OnHideGUI(UnityModManager.ModEntry modEntry) {
         openedGuide = false;
         openedExclude = false;
@@ -108,8 +107,10 @@ static class Main {
         openedColorSection = false;
         colorPickerItem = "";
         selectedOutfit = Outfit.Current;
-        excludeNewEE = excludeNewEESave;
-        settings.Save(modEntry);
+        isWindowOpen = false;
+    }
+    static void OnShowGUI(UnityModManager.ModEntry modEntry) {
+         isWindowOpen = true;
     }
     static void OnGUI(UnityModManager.ModEntry modEntry) {
         if (Event.current.type == EventType.Layout && (error != null || shouldResetError)) {
@@ -310,10 +311,6 @@ static class Main {
                     }
 
                     DrawDiv();
-                    excludeNewEESave = GUILayout.Toggle(excludeNewEESave, "Automatically exclude new items on all characters");
-                    excludeNewEE = false; //disable while gui is open
-
-                    DrawDiv();
                     shouldOpenColorSection = GUILayout.Toggle(shouldOpenColorSection, "Show Color Section", GUILayout.ExpandWidth(false));
                     if (Event.current.type == EventType.Layout) {
                         openedColorSection = shouldOpenColorSection;
@@ -447,6 +444,9 @@ static class Main {
                             }
                         }
                     }
+
+                    DrawDiv();
+                    settings.ShouldExcludeNewEEs = GUILayout.Toggle(settings.ShouldExcludeNewEEs, "Automatically exclude new items on all characters");
                 } else {
                     GUILayout.Label("Load a save first!", GUILayout.ExpandWidth(false));
                 }
@@ -515,7 +515,7 @@ static class Main {
         }
     }
     public static void ColorPickerGrid(ref CustomColorTex customColors, ref int customColorIndex, ref int height, ref int width) {
-        bool changedSize = false; 
+        bool changedSize = false;
         using (new GUILayout.HorizontalScope()) {
             GUILayout.Label("Texture Height: ", GUILayout.ExpandWidth(false));
             changedSize |= IntTextField(ref height, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
@@ -688,7 +688,7 @@ static class Main {
         internal static string currentUID;
         internal static (CustomColorTex, CustomColorTex, CustomColorTex) customOverride = (null, null, null);
         [HarmonyPrefix]
-        private static void RepaintRextures(EquipmentEntity __instance, EquipmentEntity.PaintedTextures paintedTextures, ref int primaryRampIndex,ref int secondaryRampIndex) {
+        private static void RepaintRextures(EquipmentEntity __instance, EquipmentEntity.PaintedTextures paintedTextures, ref int primaryRampIndex, ref int secondaryRampIndex) {
             customOverride = (null, null, null);
             if (currentUID == null) {
                 log.Log(new System.Diagnostics.StackTrace().ToString());
@@ -785,16 +785,13 @@ static class Main {
         private static bool AddEquipmentEntity(Character __instance, EquipmentEntity ee) {
             try {
                 var uniqueId = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
-                if (uniqueId != null)
-                {
-                    if (excludeNewEE)
-                    {
+                if (uniqueId != null) {
+                    if (doExcludeNewEEs && !isWindowOpen) {
                         EntityPartStorage.perSave.ExcludeByName.TryGetValue(uniqueId, out var tmpExcludes);
                         if (tmpExcludes == null) tmpExcludes = new();
 
                         cachedLinks.TryGetValue(uniqueId, out var defaultClothes);
-                        if (!(defaultClothes?.Contains(ee) ?? false))
-                        {
+                        if (!(defaultClothes?.Contains(ee) ?? false)) {
                             tmpExcludes.Add(ee.name);
                             EntityPartStorage.perSave.ExcludeByName[uniqueId] = tmpExcludes;
                             EntityPartStorage.SavePerSaveSettings(false);
@@ -802,8 +799,7 @@ static class Main {
                     }
                     EntityPartStorage.perSave.AddClothes.TryGetValue(uniqueId, out var ids);
                     EntityPartStorage.perSave.NakedFlag.TryGetValue(uniqueId, out var nakedFlag);
-                    if (ids?.Count > 0 || nakedFlag)
-                    { 
+                    if (ids?.Count > 0 || nakedFlag) {
                         cachedLinks.TryGetValue(uniqueId, out var defaultClothes);
                         if (defaultClothes?.Contains(ee) ?? false) return false;
                     }
@@ -888,22 +884,18 @@ static class Main {
 
 
     [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.Show))]
-    public static class setEEFlagOn
-    {
+    public static class setEEFlagOn {
         [HarmonyPrefix]
-        public static void Show()
-        {
-            excludeNewEE = excludeNewEESave;
+        public static void Show() {
+            doExcludeNewEEs = settings.ShouldExcludeNewEEs;
         }
     }
 
     [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.Hide))]
-    public static class setEFlagOff
-    {
+    public static class setEFlagOff {
         [HarmonyPrefix]
-        private static void Hide()
-        {
-            excludeNewEE = false;
+        private static void Hide() {
+            doExcludeNewEEs = false;
         }
     }
 
