@@ -109,7 +109,6 @@ static class Main {
         colorPickerItem = "";
         selectedOutfit = Outfit.Current;
         doExcludeNewEEs = settings.ShouldExcludeNewEEs;
-        settings.Save(modEntry);
     }
     static void OnShowGUI(UnityModManager.ModEntry modEntry) {
         doExcludeNewEEs = false;
