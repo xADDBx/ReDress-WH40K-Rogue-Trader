@@ -40,6 +40,7 @@ static class Main {
     internal static UnityModManager.ModEntry.ModLogger log;
     internal static bool isInRoom = false;
     internal static bool doExcludeNewEEs = false;
+    internal static bool isWindowOpen = false;
     public static Settings settings;
     static bool Load(UnityModManager.ModEntry modEntry) {
         log = modEntry.Logger;
@@ -106,10 +107,10 @@ static class Main {
         openedColorSection = false;
         colorPickerItem = "";
         selectedOutfit = Outfit.Current;
-        doExcludeNewEEs = settings.ShouldExcludeNewEEs;
+        isWindowOpen = false;
     }
     static void OnShowGUI(UnityModManager.ModEntry modEntry) {
-        doExcludeNewEEs = false;
+         isWindowOpen = true;
     }
     static void OnGUI(UnityModManager.ModEntry modEntry) {
         if (Event.current.type == EventType.Layout && (error != null || shouldResetError)) {
@@ -785,7 +786,7 @@ static class Main {
             try {
                 var uniqueId = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
                 if (uniqueId != null) {
-                    if (doExcludeNewEEs) {
+                    if (doExcludeNewEEs && !isWindowOpen) {
                         EntityPartStorage.perSave.ExcludeByName.TryGetValue(uniqueId, out var tmpExcludes);
                         if (tmpExcludes == null) tmpExcludes = new();
 
