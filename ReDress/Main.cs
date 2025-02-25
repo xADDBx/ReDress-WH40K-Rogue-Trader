@@ -53,7 +53,6 @@ static class Main {
         modEntry.OnSaveGUI = OnSaveGUI;
         modEntry.OnShowGUI = OnShowGUI;
         settings = Settings.Load<Settings>(modEntry);
-        excludeNewEESave = settings.ShouldExcludeNewEEs;
         HarmonyInstance = new Harmony(modEntry.Info.Id);
         HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
         return true;
