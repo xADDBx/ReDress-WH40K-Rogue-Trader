@@ -40,7 +40,6 @@ static class Main {
     internal static UnityModManager.ModEntry.ModLogger log;
     internal static bool isInRoom = false;
     internal static bool doExcludeNewEEs = false;
-    internal static bool excludeNewEESave = false;
     public static Settings settings;
     static bool Load(UnityModManager.ModEntry modEntry) {
         log = modEntry.Logger;
