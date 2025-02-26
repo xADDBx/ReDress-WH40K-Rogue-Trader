@@ -40,7 +40,6 @@ static class Main {
     internal static UnityModManager.ModEntry.ModLogger log;
     internal static bool isInRoom = false;
     internal static bool doExcludeNewEEs = false;
-    internal static bool isWindowOpen = false;
     public static Settings settings;
     static bool Load(UnityModManager.ModEntry modEntry) {
         log = modEntry.Logger;
@@ -51,7 +50,6 @@ static class Main {
         modEntry.OnGUI = OnGUI;
         modEntry.OnHideGUI = OnHideGUI;
         modEntry.OnSaveGUI = OnSaveGUI;
-        modEntry.OnShowGUI = OnShowGUI;
         settings = Settings.Load<Settings>(modEntry);
         HarmonyInstance = new Harmony(modEntry.Info.Id);
         HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
@@ -107,11 +105,8 @@ static class Main {
         openedColorSection = false;
         colorPickerItem = "";
         selectedOutfit = Outfit.Current;
-        isWindowOpen = false;
     }
-    static void OnShowGUI(UnityModManager.ModEntry modEntry) {
-         isWindowOpen = true;
-    }
+
     static void OnGUI(UnityModManager.ModEntry modEntry) {
         if (Event.current.type == EventType.Layout && (error != null || shouldResetError)) {
             if (!shouldResetError) {
@@ -786,7 +781,7 @@ static class Main {
             try {
                 var uniqueId = __instance.GetComponent<UnitEntityView>()?.Data?.UniqueId ?? null;
                 if (uniqueId != null) {
-                    if (doExcludeNewEEs && !isWindowOpen) {
+                    if (doExcludeNewEEs) {
                         EntityPartStorage.perSave.ExcludeByName.TryGetValue(uniqueId, out var tmpExcludes);
                         if (tmpExcludes == null) tmpExcludes = new();
 
