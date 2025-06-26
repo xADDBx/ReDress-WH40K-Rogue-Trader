@@ -191,13 +191,15 @@ static class Main {
                                 newIndex = GUILayout.SelectionGrid(selectedIndex2, outfits.Select(m => m.ToDescriptionString()).ToArray(), 5);
                                 if (selectedIndex2 != newIndex) {
                                     selectedOutfit = outfits[newIndex];
-                                    if (selectedOutfit == Outfit.Naked) {
-                                        EntityPartStorage.perSave.AddClothes.Remove(pickedUnit.UniqueId);
-                                        EntityPartStorage.perSave.NakedFlag[pickedUnit.UniqueId] = true;
-                                    } else {
-                                        var kee = ResourcesLibrary.BlueprintsCache.Load(JobClothesIDs[selectedOutfit]) as KingmakerEquipmentEntity;
-                                        EntityPartStorage.perSave.AddClothes[pickedUnit.UniqueId] = pickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? kee.m_MaleArray.Select(f => f.AssetId).ToList() : kee.m_FemaleArray.Select(f => f.AssetId).ToList();
-                                        EntityPartStorage.perSave.NakedFlag.Remove(pickedUnit.UniqueId);
+                                    if (selectedOutfit != Outfit.Current) {
+                                        if (selectedOutfit == Outfit.Naked) {
+                                            EntityPartStorage.perSave.AddClothes.Remove(pickedUnit.UniqueId);
+                                            EntityPartStorage.perSave.NakedFlag[pickedUnit.UniqueId] = true;
+                                        } else {
+                                            var kee = ResourcesLibrary.BlueprintsCache.Load(JobClothesIDs[selectedOutfit]) as KingmakerEquipmentEntity;
+                                            EntityPartStorage.perSave.AddClothes[pickedUnit.UniqueId] = pickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? kee.m_MaleArray.Select(f => f.AssetId).ToList() : kee.m_FemaleArray.Select(f => f.AssetId).ToList();
+                                            EntityPartStorage.perSave.NakedFlag.Remove(pickedUnit.UniqueId);
+                                        }
                                     }
                                     EntityPartStorage.SavePerSaveSettings();
                                 }
