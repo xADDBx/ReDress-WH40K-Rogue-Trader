@@ -28,6 +28,7 @@ using Kingmaker.UI.DollRoom;
 using static ReDress.EntityPartStorage;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.UI.Common;
+using Kingmaker.Visual.Sound;
 
 namespace ReDress;
 
@@ -38,7 +39,6 @@ static class Main {
     internal static ModEntry mod;
     internal static Harmony HarmonyInstance;
     internal static UnityModManager.ModEntry.ModLogger log;
-    internal static bool isInRoom = false;
     internal static bool doExcludeNewEEs = false;
     public static Settings settings;
     static bool Load(UnityModManager.ModEntry modEntry) {
@@ -64,7 +64,6 @@ static class Main {
     internal static bool shouldResetError = false;
     internal static BaseUnitEntity pickedUnit = null;
     internal static Outfit selectedOutfit = Outfit.Current;
-    internal static BaseUnitEntity cachedUnit = null;
     internal static bool openedGuide = false;
     internal static bool shouldOpenGuide = false;
     internal static bool openedExclude = false;
@@ -162,19 +161,20 @@ static class Main {
                         selectedOutfit = Outfit.Current;
                     }
                     DrawDiv();
-                    if (GUILayout.Button("Change Appeareance (opens character creation dialog).", GUILayout.ExpandWidth(false))) {
-                        cachedUnit = pickedUnit;
+                    if (GUILayout.Button("Change Appeareance", GUILayout.ExpandWidth(false))) {
+                        // Copied from ChangeAppearance GameAction
                         UnityModManager.UI.Instance.ToggleWindow();
-                        isInRoom = true;
-                        Game.Instance.Player.CreateCustomCompanion(newCompanion => {
-                            try {
-                                isInRoom = false;
-                                cachedUnit.ViewSettings.SetDoll(newCompanion.ViewSettings.Doll);
-                            } catch (Exception ex) {
-                                log.Log(ex.ToString());
-                                error = ex;
-                            }
-                        }, null, CharGenConfig.CharGenCompanionType.Common);
+                        SoundState.Instance.OnMusicStateChange(MusicStateHandler.MusicState.Chargen);
+                        CharGenConfig.Create(pickedUnit, CharGenConfig.CharGenMode.Appearance).SetOnComplete(unit => {
+                            UnitEntityView view = unit.CreateView();
+                            UnitEntityView view2 = unit.View;
+                            unit.DetachView();
+                            view2.DestroyViewObject();
+                            unit.AttachView(view);
+                            Game.Instance.Player.UpdateClaimedDlcRewardsByChosenAppearance(unit);
+                        }).SetOnClose(() => { }).SetOnCloseSoundAction(() => {
+                            SoundState.Instance.OnMusicStateChange(MusicStateHandler.MusicState.Setting);
+                        }).OpenUI();
                     }
                     DrawDiv();
                     shouldOpenClothingSection = GUILayout.Toggle(shouldOpenClothingSection, "Show Clothing Section", GUILayout.ExpandWidth(false));
@@ -608,12 +608,14 @@ static class Main {
         Crusader,
         [Description("Navigator")]
         Navigator,
+        [Description("Arbitrator")]
+        Arbitrator,
         [Description("None of the other (Naked for non-companions)")]
         Naked
     }
     internal static readonly Dictionary<Outfit, string> JobClothesIDs = new() { { Outfit.Criminal, "2415ba44fb9e4bd5b22f4f574b5f0cd8" }, { Outfit.Nobility, "86c28cf33b7e42ecb190cd6c1b2aa4cc" },
         { Outfit.Commissar, "28b88e24ffa341a7b1dfc286583f226d" }, {Outfit.Navy, "e28fc5d840134da892c24d24738ceb63" }, { Outfit.Militarum, "394e4b94f1284fefa4f47f1df0e42161" },
-        { Outfit.Psyker,"76c6f2ce3e5d4c8d9cc0c22145d4d630" }, { Outfit.Crusader, "b63a4c7a04fd47dcb8c6dfc24f92f33d" }, { Outfit.Navigator, "3afcd2d9ccb24e85844857ba852c1d88" } };
+        { Outfit.Psyker,"76c6f2ce3e5d4c8d9cc0c22145d4d630" }, { Outfit.Crusader, "b63a4c7a04fd47dcb8c6dfc24f92f33d" }, { Outfit.Navigator, "3afcd2d9ccb24e85844857ba852c1d88" }, { Outfit.Arbitrator, "de047b29d30d487cb5899ea1ec5b890f" } };
     internal static Dictionary<string, HashSet<EquipmentEntity>> cachedLinks = new();
     [HarmonyPatch(typeof(PartUnitViewSettings), nameof(PartUnitViewSettings.Instantiate))]
     internal static class PartUnitViewSettings_Instantiate_Patch {
