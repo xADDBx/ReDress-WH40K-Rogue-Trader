@@ -3,13 +3,10 @@ using Kingmaker;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.UI.MVVM.VM.CharGen;
-using Kingmaker.UnitLogic.Parts;
 using Kingmaker.View;
 using Kingmaker.Visual.CharacterSystem;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
@@ -20,13 +17,9 @@ using Kingmaker.PubSubSystem.Core;
 using Kingmaker.PubSubSystem;
 using Kingmaker.Utility.UnityExtensions;
 using static ReDress.UIHelpers;
-using Kingmaker.Visual.Sound;
 
 namespace ReDress;
 
-#if DEBUG
-[EnableReloading]
-#endif
 static class Main {
     internal static ModEntry mod;
     internal static Harmony HarmonyInstance;
@@ -36,9 +29,6 @@ static class Main {
     internal static bool Load(UnityModManager.ModEntry modEntry) {
         log = modEntry.Logger;
         mod = modEntry;
-#if DEBUG
-        modEntry.OnUnload = OnUnload;
-#endif
         modEntry.OnGUI = OnGUI;
         modEntry.OnHideGUI = OnHideGUI;
         modEntry.OnSaveGUI = OnSaveGUI;
@@ -136,19 +126,7 @@ static class Main {
                     }
                     DrawDiv();
                     if (GUILayout.Button("Change Appeareance", GUILayout.ExpandWidth(false))) {
-                        // Copied from ChangeAppearance GameAction
-                        UnityModManager.UI.Instance.ToggleWindow();
-                        SoundState.Instance.OnMusicStateChange(MusicStateHandler.MusicState.Chargen);
-                        CharGenConfig.Create(pickedUnit, CharGenConfig.CharGenMode.Appearance).SetOnComplete(unit => {
-                            UnitEntityView view = unit.CreateView();
-                            UnitEntityView view2 = unit.View;
-                            unit.DetachView();
-                            view2.DestroyViewObject();
-                            unit.AttachView(view);
-                            Game.Instance.Player.UpdateClaimedDlcRewardsByChosenAppearance(unit);
-                        }).SetOnClose(() => { }).SetOnCloseSoundAction(() => {
-                            SoundState.Instance.OnMusicStateChange(MusicStateHandler.MusicState.Setting);
-                        }).OpenUI();
+                        Helpers.OpenAppeareanceChanger(pickedUnit);
                     }
                     DrawDiv();
                     shouldOpenClothingSection = GUILayout.Toggle(shouldOpenClothingSection, "Show Clothing Section", GUILayout.ExpandWidth(false));
@@ -170,7 +148,7 @@ static class Main {
                                             EntityPartStorage.perSave.AddClothes.Remove(pickedUnit.UniqueId);
                                             EntityPartStorage.perSave.NakedFlag[pickedUnit.UniqueId] = true;
                                         } else {
-                                            var kee = ResourcesLibrary.BlueprintsCache.Load(JobClothesIDs[selectedOutfit]) as KingmakerEquipmentEntity;
+                                            var kee = ResourcesLibrary.BlueprintsCache.Load(Helpers.JobClothesIDs[selectedOutfit]) as KingmakerEquipmentEntity;
                                             EntityPartStorage.perSave.AddClothes[pickedUnit.UniqueId] = pickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? kee.m_MaleArray.Select(f => f.AssetId).ToList() : kee.m_FemaleArray.Select(f => f.AssetId).ToList();
                                             EntityPartStorage.perSave.NakedFlag.Remove(pickedUnit.UniqueId);
                                         }
@@ -451,14 +429,4 @@ static class Main {
             h.HandleUnitChangeEquipmentColor(pair.PrimaryIndex, false);
         }, true);
     }
-    internal static readonly Dictionary<Outfit, string> JobClothesIDs = new() { { Outfit.Criminal, "2415ba44fb9e4bd5b22f4f574b5f0cd8" }, { Outfit.Nobility, "86c28cf33b7e42ecb190cd6c1b2aa4cc" },
-        { Outfit.Commissar, "28b88e24ffa341a7b1dfc286583f226d" }, {Outfit.Navy, "e28fc5d840134da892c24d24738ceb63" }, { Outfit.Militarum, "394e4b94f1284fefa4f47f1df0e42161" },
-        { Outfit.Psyker,"76c6f2ce3e5d4c8d9cc0c22145d4d630" }, { Outfit.Crusader, "b63a4c7a04fd47dcb8c6dfc24f92f33d" }, { Outfit.Navigator, "3afcd2d9ccb24e85844857ba852c1d88" }, 
-        { Outfit.Arbitrator, "de047b29d30d487cb5899ea1ec5b890f" } };
-#if DEBUG
-    static bool OnUnload(UnityModManager.ModEntry modEntry) {
-        HarmonyInstance.UnpatchAll(modEntry.Info.Id);
-        return true;
-    }
-#endif
 }

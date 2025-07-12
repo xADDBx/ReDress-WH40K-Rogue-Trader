@@ -51,7 +51,7 @@ public class Patches {
                     }
                     if (!cachedLinks.ContainsKey(context.UniqueId)) cachedLinks[context.UniqueId] = new();
                     if (outfitIds?.Count > 0 || nakedFlag) {
-                        foreach (var job in JobClothesIDs.Values) {
+                        foreach (var job in Helpers.JobClothesIDs.Values) {
                             var kee = ResourcesLibrary.BlueprintsCache.Load(job) as KingmakerEquipmentEntity;
                             foreach (var entry in kee?.m_MaleArray) {
                                 charac.RemoveEquipmentEntity(entry);
