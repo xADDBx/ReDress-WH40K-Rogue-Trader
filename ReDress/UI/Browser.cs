@@ -4,9 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using static UnityModManagerNet.UnityModManager.Param;
 using static UnityEngine.GUILayout;
-using static Kingmaker.UnitLogic.Buffs.Components.DOTLogic;
 using UnityEngine;
 using Owlcat.Runtime.Core;
 
