@@ -33,7 +33,7 @@ static class Main {
     internal static UnityModManager.ModEntry.ModLogger log;
     internal static bool doExcludeNewEEs = false;
     public static Settings settings;
-    static bool Load(UnityModManager.ModEntry modEntry) {
+    internal static bool Load(UnityModManager.ModEntry modEntry) {
         log = modEntry.Logger;
         mod = modEntry;
 #if DEBUG
@@ -62,33 +62,23 @@ static class Main {
     internal static bool shouldOpenExclude = false;
     internal static bool openedInclude = false;
     internal static bool shouldOpenInclude = false;
-    internal static bool openedColorPicker = false;
-    internal static bool shouldOpenColorPicker = false;
-    internal static bool colorPickerIsPrimary = false;
     internal static bool shouldOpenClothingSection = false;
     internal static bool openedClothingSection = false;
     internal static bool openedColorSection = false;
     internal static string showPrimaryForEE = "";
     internal static string showSecondaryForEE = "";
-    internal static string showMainForEE = "";
     internal static bool ShowCustomPrimary = false;
     internal static bool ShowCustomSecondary = false;
-    internal static bool ShowCustomMain = false;
     internal static bool ShouldShowCustomPrimary = false;
     internal static bool ShouldShowCustomSecondary = false;
-    internal static bool ShouldShowCustomMain = false;
     internal static bool shouldOpenColorSection = false;
-    internal static string colorPickerItem = "";
     internal static Browser<(string, string), (string, string)> includeBrowser = new(true);
-    internal static Browser<Texture2D, Texture2D> rampOverrideBrowser = new(true);
     static void OnHideGUI(UnityModManager.ModEntry modEntry) {
         openedGuide = false;
         openedExclude = false;
         openedInclude = false;
-        openedColorPicker = false;
         openedClothingSection = false;
         openedColorSection = false;
-        colorPickerItem = "";
         selectedOutfit = Outfit.Current;
     }
 
