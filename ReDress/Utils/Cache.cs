@@ -7,10 +7,10 @@ using Kingmaker.Visual.CharacterSystem;
 
 namespace ReDress {
     public static class Cache {
-        public static bool NeedsCacheRebuilt => (GameVersion.GetVersion() != Main.m_Settings.CachedVersion) && !isRebuilding;
-        public static bool isRebuilding = false;
+        public static bool NeedsCacheRebuilt => (GameVersion.GetVersion() != Main.m_Settings.CachedVersion) && !m_IsRebuilding;
+        private static bool m_IsRebuilding = false;
         internal static void RebuildCache() {
-            isRebuilding = true;
+            m_IsRebuilding = true;
             Main.m_Settings.AssetIds = new();
             foreach (var guid in BundlesLoadService.Instance.m_LocationList.Guids.Where(g => BundlesLoadService.Instance.m_LocationList.GuidToBundle[g] == "equipment")) {
                 var obj = ResourcesLibrary.TryGetResource<UnityEngine.Object>(guid, true, false);
@@ -21,7 +21,7 @@ namespace ReDress {
             ResourcesLibrary.CleanupLoadedCache(ResourcesLibrary.CleanupMode.UnloadNonRequested);
             Main.m_Settings.CachedVersion = GameVersion.GetVersion();
             Main.m_Settings.Save(Main.Mod);
-            isRebuilding = false;
+            m_IsRebuilding = false;
         }
         [HarmonyPatch(typeof(GameMainMenu))]
         public static class RebuildCachePatch {

@@ -56,7 +56,7 @@ public class CustomTexCreator {
                 colorStyle.normal.background = MakeTex(2, 2, current);
                 GUILayout.Box(GUIContent.none, colorStyle, GUILayout.Width(100), GUILayout.Height(100));
                 */
-                if (GUILayout.Button("Apply Custom Color", GUILayout.ExpandWidth(false))) {
+                if (GUILayout.Button("Apply Custom Texture", GUILayout.ExpandWidth(false))) {
                     return true;
                 }
                 return false;

@@ -63,7 +63,7 @@ static class Main {
             }
         } else {
             try {
-                GUILayout.Toggle(m_OpenedGuide, "Show Guide", GUILayout.ExpandWidth(false));
+                m_OpenedGuide = GUILayout.Toggle(m_OpenedGuide, "Show Guide", GUILayout.ExpandWidth(false));
                 if (m_OpenedGuide) {
                     using (new GUILayout.HorizontalScope()) {
                         GUILayout.Space(50);
@@ -116,7 +116,7 @@ static class Main {
     }
 
     private static void ClothingGUI() {
-        GUILayout.Toggle(m_OpenedClothingSection, "Show Clothing Section", GUILayout.ExpandWidth(false));
+        m_OpenedClothingSection = GUILayout.Toggle(m_OpenedClothingSection, "Show Clothing Section", GUILayout.ExpandWidth(false));
         if (m_OpenedClothingSection) {
             using (new GUILayout.HorizontalScope()) {
                 GUILayout.Space(25);
@@ -153,7 +153,7 @@ static class Main {
                     }
 
                     DrawDiv();
-                    GUILayout.Toggle(m_OpenedExclude, "Show Exclude Section", GUILayout.ExpandWidth(false));
+                    m_OpenedExclude = GUILayout.Toggle(m_OpenedExclude, "Show Exclude Section", GUILayout.ExpandWidth(false));
                     if (m_OpenedExclude) {
                         if (GUILayout.Button("Reset Excludes", GUILayout.ExpandWidth(false))) {
                             EntityPartStorage.perSave.ExcludeByName.Remove(PickedUnit!.UniqueId);
@@ -192,7 +192,7 @@ static class Main {
 
                     DrawDiv();
                     GUILayout.Label("Opening the Include section might make the game freeze for a few seconds to build a cache of existing EquipmentEntities.");
-                    GUILayout.Toggle(m_OpenedInclude, "Show Include Section", GUILayout.ExpandWidth(false));
+                    m_OpenedInclude = GUILayout.Toggle(m_OpenedInclude, "Show Include Section", GUILayout.ExpandWidth(false));
                     if (m_OpenedInclude) {
                         if (GUILayout.Button("Reset Includes", GUILayout.ExpandWidth(false))) {
                             EntityPartStorage.perSave.IncludeByName.Remove(PickedUnit!.UniqueId);
@@ -243,7 +243,7 @@ static class Main {
     }
 
     private static void ColorGUI() {
-        GUILayout.Toggle(m_OpenedColorSection, "Show Color Section", GUILayout.ExpandWidth(false));
+        m_OpenedColorSection = GUILayout.Toggle(m_OpenedColorSection, "Show Color Section", GUILayout.ExpandWidth(false));
         if (m_OpenedColorSection) {
             using (new GUILayout.HorizontalScope()) {
                 GUILayout.Space(25);
@@ -270,12 +270,14 @@ static class Main {
                                     GUILayout.Label($"Current Primary Override: {oldOverrides.Item1}");
                                 }
                                 bool isActive = m_PrimaryTexCreator != null && (m_PrimaryTexCreator.EEName == eeName);
-                                if (GUILayout.Toggle(isActive, "Show Custom Primary Color Picker", GUILayout.ExpandWidth(false))) {
-                                    if (isActive) {
+                                bool isNowActive = GUILayout.Toggle(isActive, "Show Custom Primary Color Picker", GUILayout.ExpandWidth(false));
+                                if (isNowActive != isActive) {
+                                    if (isNowActive) {
                                         m_PrimaryTexCreator = new(eeName, oldOverrides.Item1);
                                     } else {
                                         m_PrimaryTexCreator = null;
                                     }
+                                    isActive = isNowActive;
                                 }
                                 if (isActive) {
                                     if (m_PrimaryTexCreator!.ColorPickerGUI()) {
@@ -290,12 +292,14 @@ static class Main {
                                     GUILayout.Label($"Current Secondary Override: {oldOverrides.Item2}");
                                 }
                                 bool isActive2 = m_SecondaryTexCreator != null && (m_SecondaryTexCreator.EEName == eeName);
-                                if (GUILayout.Toggle(isActive2, "Show Custom Secondary Color Picker", GUILayout.ExpandWidth(false))) {
+                                bool isNowActive2 = GUILayout.Toggle(isActive2, "Show Custom Secondary Color Picker", GUILayout.ExpandWidth(false));
+                                if (isActive2 != isNowActive2) {
                                     if (isActive2) {
                                         m_SecondaryTexCreator = new(eeName, oldOverrides.Item2);
                                     } else {
                                         m_SecondaryTexCreator = null;
                                     }
+                                    isActive2 = isNowActive2;
                                 }
                                 if (isActive2) {
                                     if (m_SecondaryTexCreator!.ColorPickerGUI()) {

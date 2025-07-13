@@ -12,6 +12,7 @@ using HarmonyLib;
 namespace ReDress {
     public static class EntityPartStorage {
         public class CustomColor {
+            [JsonIgnore]
             public static CustomColor Black = new CustomColor() { B = 0, G = 0, R = 0 };
             [JsonIgnore]
             public static Texture2D? CachedTex;
