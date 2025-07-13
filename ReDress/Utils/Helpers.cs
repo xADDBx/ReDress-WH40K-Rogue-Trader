@@ -1,14 +1,12 @@
 ﻿using Kingmaker;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem.Core;
+using Kingmaker.PubSubSystem;
 using Kingmaker.UI.MVVM.VM.CharGen;
 using Kingmaker.View;
+using Kingmaker.Visual.CharacterSystem;
 using Kingmaker.Visual.Sound;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using UnityModManagerNet;
 
 namespace ReDress;
@@ -38,5 +36,29 @@ public static class Helpers {
         }).SetOnClose(() => { }).SetOnCloseSoundAction(() => {
             SoundState.Instance.OnMusicStateChange(MusicStateHandler.MusicState.Setting);
         }).OpenUI();
+    }
+    public static CharacterColorsProfile? GetClothColorsProfile(EquipmentEntity equipmentEntity, out RampColorPreset? colorPreset, bool secondary) {
+        if (equipmentEntity != null) {
+            CharacterColorsProfile characterColorsProfile = (secondary ? equipmentEntity.SecondaryColorsProfile : equipmentEntity.PrimaryColorsProfile);
+            if (characterColorsProfile != null) {
+                colorPreset = equipmentEntity.ColorPresets;
+                return characterColorsProfile;
+            }
+        }
+        colorPreset = null;
+        return null;
+    }
+
+    public static void SetColorPair(EquipmentEntity ee, RampColorPreset.IndexSet pair) {
+        if (pair.PrimaryIndex >= 0) {
+            Main.PickedUnit!.View.CharacterAvatar.SetPrimaryRampIndex(ee, pair.PrimaryIndex);
+        }
+        if (pair.SecondaryIndex >= 0) {
+            Main.PickedUnit!.View.CharacterAvatar.SetSecondaryRampIndex(ee, pair.SecondaryIndex);
+        }
+        Main.PickedUnit!.View.CharacterAvatar.IsAtlasesDirty = true;
+        EventBus.RaiseEvent(Main.PickedUnit, (IUnitVisualChangeHandler h) => {
+            h.HandleUnitChangeEquipmentColor(pair.PrimaryIndex, false);
+        }, true);
     }
 }

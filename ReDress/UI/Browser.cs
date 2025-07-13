@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using static UnityEngine.GUILayout;
+﻿using static UnityEngine.GUILayout;
 using UnityEngine;
 using Owlcat.Runtime.Core;
 
@@ -17,11 +11,11 @@ namespace ReDress {
     }
     public class Browser<Definition, Item> : Browser {
         private IEnumerable<Definition> _pagedResults = new List<Definition>();
-        private Queue<Definition> cachedSearchResults;
+        private Queue<Definition>? cachedSearchResults;
         public List<Definition> filteredDefinitions = new();
-        public List<Definition> tempFilteredDefinitions;
-        private Dictionary<Definition, Item> _currentDict;
-        private CancellationTokenSource _searchCancellationTokenSource;
+        public List<Definition>? tempFilteredDefinitions;
+        private Dictionary<Definition, Item>? _currentDict;
+        private CancellationTokenSource? _searchCancellationTokenSource;
         private string _searchText = "";
         public string SearchText => _searchText;
         public sortDirection SortDirection = sortDirection.Ascending;
@@ -57,7 +51,7 @@ namespace ReDress {
             Func<Item, Definition> definition,
             Func<Definition, string> searchKey,
             Func<Definition, IComparable[]> sortKeys,
-            Action<Definition, Item> onRowGUI = null) {
+            Action<Definition, Item>? onRowGUI = null) {
             current ??= new List<Item>();
             List<Definition> definitions = Update(current, searchKey, sortKeys, definition);
             using (new HorizontalScope()) {
@@ -105,7 +99,7 @@ namespace ReDress {
                 }
             }
             foreach (var def in definitions) {
-                _currentDict.TryGetValue(def, out var item);
+                _currentDict!.TryGetValue(def, out var item);
                 if (onRowGUI != null) {
                     using (new HorizontalScope()) {
                         Space(50);
@@ -124,7 +118,7 @@ namespace ReDress {
                 if (_finishedSearch || isSearching) {
                     bool nothingToSearch = current.Count() == 0;
                     // If the search has at least one result
-                    if ((cachedSearchResults.Count > 0 || nothingToSearch) && (searchQueryChanged || _finishedSearch)) {
+                    if ((cachedSearchResults!.Count > 0 || nothingToSearch) && (searchQueryChanged || _finishedSearch)) {
                         Comparer<Definition> comparer = Comparer<Definition>.Create((x, y) => {
                             var xKeys = sortKeys(x);
                             var yKeys = sortKeys(y);
@@ -142,7 +136,7 @@ namespace ReDress {
                             _doCopyToEnd = false;
                             _finishedCopyToEnd = false;
                             cachedSearchResults.Clear();
-                            filteredDefinitions = tempFilteredDefinitions;
+                            filteredDefinitions = tempFilteredDefinitions!;
                         } else {
                             // If the search already finished we want to copy all results as fast as possible
                             if (_finishedSearch && cachedSearchResults.Count < 1000) {
@@ -196,7 +190,7 @@ namespace ReDress {
                         isSearching = true;
                         needsReloadData = false;
                     } else {
-                        _searchCancellationTokenSource.Cancel();
+                        _searchCancellationTokenSource!.Cancel();
                     }
                 }
                 if (_updatePages) {
@@ -205,7 +199,7 @@ namespace ReDress {
                     UpdatePaginatedResults();
                 }
             }
-            return _pagedResults?.ToList();
+            return _pagedResults?.ToList() ?? [];
         }
 
         public void CopyToEnd(List<Definition> filteredDefinitions, Queue<Definition> cachedSearchResults, Comparer<Definition> comparer) {
@@ -227,11 +221,11 @@ namespace ReDress {
             var terms = searchTextParam.Split(' ').Select(s => s.ToLower()).ToHashSet();
             if (!string.IsNullOrEmpty(searchTextParam)) {
                 foreach (var def in definitions) {
-                    if (_searchCancellationTokenSource.IsCancellationRequested) {
+                    if (_searchCancellationTokenSource!.IsCancellationRequested) {
                         isSearching = false;
                         return;
                     }
-                    if (def.GetType().ToString().Contains(searchTextParam)
+                    if (def!.GetType().ToString().Contains(searchTextParam)
                        ) {
                         lock (cachedSearchResults) {
                             cachedSearchResults.Enqueue(def);
