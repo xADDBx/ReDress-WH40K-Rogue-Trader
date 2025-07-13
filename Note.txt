@@ -1,0 +1,3 @@
+1. ShouldExcludeNewEEs setting has been reset, i.e. it needs to be turned on again.
+2. Rewrote a lot
+3. Changed Include UI (Alignment? What is that?)

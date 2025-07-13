@@ -7,15 +7,14 @@ using UnityEngine;
 using Kingmaker.Blueprints;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.UI.Common;
-using HarmonyLib;
 
 namespace ReDress {
     public static class EntityPartStorage {
         public class CustomColor {
             [JsonIgnore]
-            public static CustomColor Black = new CustomColor() { B = 0, G = 0, R = 0 };
-            [JsonIgnore]
             public static Texture2D? CachedTex;
+            [JsonProperty]
+            public string? Name;
             [JsonProperty]
             public float R;
             [JsonProperty]
@@ -23,8 +22,14 @@ namespace ReDress {
             [JsonProperty]
             public float B;
 
-            public static implicit operator UnityEngine.Color(CustomColor c) {
-                return new UnityEngine.Color(c.R, c.G, c.B);
+            public void Become(CustomColor c) {
+                Name = c.Name;
+                R = c.R;
+                G = c.G;
+                B = c.B;
+            }
+            public static implicit operator Color(CustomColor c) {
+                return new Color(c.R, c.G, c.B);
             }
             public override string ToString() {
                 return $"R: {Mathf.RoundToInt(R * 255)}, G: {Mathf.RoundToInt(G * 255)}, B: {Mathf.RoundToInt(B * 255)}";
@@ -53,7 +58,7 @@ namespace ReDress {
             public CustomColorTex() { }
 #pragma warning restore CS8618
             public CustomColorTex(TextureWrapMode wrapMode) {
-                colors = [AccessTools.MakeDeepCopy<CustomColor>(CustomColor.Black)];
+                colors = [new() { B = 0, G = 0, R = 0 }];
                 this.wrapMode = wrapMode;
             }
             public CustomColorTex(CustomColor c) {
