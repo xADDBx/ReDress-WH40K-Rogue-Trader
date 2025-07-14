@@ -8,3 +8,4 @@
 TODO:
 - Memory Leak?
 - Internal Rewrite (Unit Identity/Hashing)
+- Change guide section (link to the google doc + the reddit guide?)

@@ -70,7 +70,7 @@ public static class Main {
 
     private static void OnGUI(UnityModManager.ModEntry modEntry) {
         try {
-            if (m_GuiThreadTaskQueue.TryDequeue(out var task)) {
+            while (m_GuiThreadTaskQueue.TryDequeue(out var task)) {
                 task();
             }
         } catch (Exception ex) {
@@ -393,7 +393,7 @@ public static class Main {
     }
     private static void OnFixedUpdate(UnityModManager.ModEntry modEntry, float z) {
         try {
-            if (m_MainThreadTaskQueue.TryDequeue(out var task)) {
+            while (m_MainThreadTaskQueue.TryDequeue(out var task)) {
                 task();
             }
         } catch (Exception ex) {
