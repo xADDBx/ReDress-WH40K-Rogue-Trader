@@ -1,10 +1,10 @@
-1. ShouldExcludeNewEEs setting has been reset, i.e. it needs to be turned on again.
-2. Rewrote a lot
-3. Changed Include UI (Alignment? What is that?)
-4. Changed Color UI
-5. Added Color Presets
-6. Tex presets
+1. Refactored the code base a lot
+2. Changed Include UI
+3. Changed Color UI
+4. Added Color Presets
+5. Added Texture Presets
+6. ShouldExcludeNewEEs setting has been reset, i.e. it needs to be turned on again.
 
 TODO:
-- Leaks
-- internal rewrite (hashing)
+- Memory Leak?
+- Internal Rewrite (Unit Identity/Hashing)
