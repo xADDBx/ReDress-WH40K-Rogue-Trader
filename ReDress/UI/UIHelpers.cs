@@ -48,7 +48,7 @@ public static class UIHelpers {
     public static GUILayout.HorizontalScope HorizontalScope(params GUILayoutOption[] options) => new(options);
     public static GUILayout.VerticalScope VerticalScope(float width) => new(GUILayout.Width(width));
     public static GUILayout.VerticalScope VerticalScope(params GUILayoutOption[] options) => new(options);
-    public static GUILayoutOption AutoWidth() => AutoWidth();
+    public static GUILayoutOption AutoWidth() => GUILayout.ExpandWidth(false);
     public static float EffectiveWindowWidth() => 0.98f * UnityModManager.Params.WindowWidth;
     public static float CalculateLargestLabelSize(IEnumerable<string> items, GUIStyle? style = null) {
         style ??= GUI.skin.label;
