@@ -7,8 +7,8 @@ namespace ReDress;
 public class CustomTexCreator {
     private string m_ColorName = "";
     private string m_TexName = "";
-    private static Browser<CustomColor>? m_CustomColorPresetBrowser;
-    private static Browser<CustomColorTex>? m_CustomColorTexPresetBrowser;
+    private Browser<CustomColor>? m_CustomColorPresetBrowser;
+    private Browser<CustomColorTex>? m_CustomColorTexPresetBrowser;
     private CustomColorTex m_CurrentTex = new(TextureWrapMode.Clamp);
     public string EEName;
     private int m_CurrentlyColorIdx = 0;
@@ -39,10 +39,13 @@ public class CustomTexCreator {
         using (HorizontalScope()) {
             using (VerticalScope()) {
                 bool active = m_CustomColorPresetBrowser != null;
-                if (GUILayout.Toggle(active, "Show Color Presets")) {
-                    m_CustomColorPresetBrowser ??= new(c => c.ToString(), c => c.ToString(), CustomColorPresets.CustomColors, showDivBetweenItems: false);
-                } else {
-                    m_CustomColorPresetBrowser = null;
+                using (HorizontalScope()) {
+                    Space(-7);
+                    if (GUILayout.Toggle(active, "Show Color Presets")) {
+                        m_CustomColorPresetBrowser ??= new(c => c.ToString(), c => c.ToString(), CustomColorPresets.CustomColors, showDivBetweenItems: false);
+                    } else {
+                        m_CustomColorPresetBrowser = null;
+                    }
                 }
                 if (m_CustomColorPresetBrowser != null) {
                     m_CustomColorPresetBrowser.OnGUI(color => {
@@ -115,10 +118,13 @@ public class CustomTexCreator {
     }
     public void ColorPickerGrid() {
         bool active = m_CustomColorTexPresetBrowser != null;
-        if (GUILayout.Toggle(active, "Show Texture Presets")) {
-            m_CustomColorTexPresetBrowser ??= new(c => c.ToString(), c => c.ToString(), CustomTexturePresets.CustomColorTextures, showDivBetweenItems: false);
-        } else {
-            m_CustomColorTexPresetBrowser = null;
+        using (HorizontalScope()) {
+            Space(-7);
+            if (GUILayout.Toggle(active, "Show Texture Presets")) {
+                m_CustomColorTexPresetBrowser ??= new(c => c.ToString(), c => c.ToString(), CustomTexturePresets.CustomColorTextures, showDivBetweenItems: false);
+            } else {
+                m_CustomColorTexPresetBrowser = null;
+            }
         }
         if (m_CustomColorTexPresetBrowser != null) {
             m_CustomColorTexPresetBrowser.OnGUI(tex => {

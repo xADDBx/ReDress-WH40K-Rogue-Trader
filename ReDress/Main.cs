@@ -273,8 +273,12 @@ public static class Main {
                         var ee = entry;
                         var eeName = ee.name.IsNullOrEmpty() ? ee.ToString() : ee.name;
                         using (HorizontalScope()) {
-                            GUILayout.Label($"{eeName}:", Width(width));
-                            Space(10);
+                            if (m_CurrentColorSectionEE == eeName) {
+                                GUILayout.Label($"{eeName}:".Cyan(), Width(width));
+                            } else {
+                                GUILayout.Label($"{eeName}:", Width(width));
+                            }
+                                Space(10);
                             rampOverrides.TryGetValue(eeName, out var maybeRampOverride);
                             using (VerticalScope()) {
                                 Helpers.GetClothColorsProfile(entry, out var colorPresets, false);
