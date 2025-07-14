@@ -42,10 +42,18 @@ namespace ReDress {
                 CachedTex.Apply();
                 return CachedTex;
             }
+            public CustomColor Clone() => new() {
+                Name = Name,
+                R = R,
+                G = G,
+                B = B
+            };
         }
         public class CustomColorTex {
             [JsonIgnore]
             public static Dictionary<(int, int), Texture2D>? CachedTextures;
+            [JsonProperty]
+            public string? Name;
             [JsonProperty]
             public int height = 1;
             [JsonProperty]
@@ -54,6 +62,13 @@ namespace ReDress {
             public List<CustomColor> colors;
             [JsonProperty]
             public TextureWrapMode wrapMode = TextureWrapMode.Clamp;
+            public void Become(CustomColorTex tex) {
+                Name = tex.Name;
+                height = tex.height;
+                width = tex.width;
+                colors = tex.colors;
+                wrapMode = tex.wrapMode;
+            }
 #pragma warning disable CS8618 // Constructor exists only for Serializer
             public CustomColorTex() { }
 #pragma warning restore CS8618
@@ -79,6 +94,19 @@ namespace ReDress {
                 // Maybe result.Compress() if size > 1x1?
                 CachedTex.Apply();
                 return CachedTex;
+            }
+            public CustomColorTex Clone() {
+                CustomColorTex tex = new() {
+                    Name = Name,
+                    height = height,
+                    width = width, 
+                    wrapMode = wrapMode,
+                    colors = []
+                };
+                foreach (var c in colors) {
+                    tex.colors.Add(c.Clone());
+                }
+                return tex;
             }
             public override string ToString() {
                 return $"{height}x{width} Texture with {wrapMode} mode.";

@@ -37,6 +37,7 @@ public static class UIHelpers {
         GUILayout.Label(title ?? "", options);
     }
     public static string Color(this string s, string color) => $"<color={color}>{s}</color>";
+    public static string Bold(this string s) => $"<b>{s}</b>";
     public static string Cyan(this string s) => s.Color("cyan");
     public static string Green(this string s) => s.Color("#00ff00ff");
     public static string Blue(this string s) => s.Color("blue");
@@ -47,7 +48,7 @@ public static class UIHelpers {
     public static GUILayout.HorizontalScope HorizontalScope(params GUILayoutOption[] options) => new(options);
     public static GUILayout.VerticalScope VerticalScope(float width) => new(GUILayout.Width(width));
     public static GUILayout.VerticalScope VerticalScope(params GUILayoutOption[] options) => new(options);
-    public static GUILayoutOption AutoWidth() => GUILayout.ExpandWidth(false);
+    public static GUILayoutOption AutoWidth() => AutoWidth();
     public static float EffectiveWindowWidth() => 0.98f * UnityModManager.Params.WindowWidth;
     public static float CalculateLargestLabelSize(IEnumerable<string> items, GUIStyle? style = null) {
         style ??= GUI.skin.label;
@@ -81,7 +82,7 @@ public static class UIHelpers {
         }
     }
     public static bool TextField(ref string content, Action<(string oldContent, string newContent)>? onContentChanged, params GUILayoutOption[] options) {
-        options = options.Length == 0 ? [GUILayout.ExpandWidth(false), GUILayout.Width(600)] : options;
+        options = options.Length == 0 ? [AutoWidth(), GUILayout.Width(600)] : options;
         bool hasChanged = false;
         var oldContent = content;
         var newText = GUILayout.TextField(oldContent, options);

@@ -1,3 +1,10 @@
 1. ShouldExcludeNewEEs setting has been reset, i.e. it needs to be turned on again.
 2. Rewrote a lot
 3. Changed Include UI (Alignment? What is that?)
+4. Changed Color UI
+5. Added Color Presets
+6. Tex presets
+
+TODO:
+- Leaks
+- internal rewrite (hashing)

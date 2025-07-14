@@ -2,11 +2,11 @@
 using UnityEngine;
 using static ReDress.UIHelpers;
 using Kingmaker.Utility.DotNetExtensions;
-using HarmonyLib;
 
 namespace ReDress;
 public class CustomTexCreator {
     private string m_ColorName = "";
+    private string m_TexName = "";
     private static Browser<CustomColor>? m_CustomColorPresetBrowser;
     private static Browser<CustomColorTex>? m_CustomColorTexPresetBrowser;
     private CustomColorTex m_CurrentTex = new(TextureWrapMode.Clamp);
@@ -16,14 +16,11 @@ public class CustomTexCreator {
     private int m_Width = 1;
     public CustomTexCreator(string eeName, CustomColorTex? customTexture = null) {
         m_CurrentTex = customTexture ?? new(TextureWrapMode.Clamp);
-        m_Height = m_CurrentTex.height;
-        m_Width = m_CurrentTex.width;
         EEName = eeName;
+        RefitCreator();
         RefitTexture();
     }
-    public CustomColorTex GetTexCopy() {
-        return AccessTools.MakeDeepCopy<CustomColorTex>(m_CurrentTex);
-    }
+    public CustomColorTex GetTexCopy() => m_CurrentTex.Clone();
     internal CustomColor CurrentColor {
         get {
             return m_CurrentTex.colors[m_CurrentlyColorIdx];
@@ -50,9 +47,9 @@ public class CustomTexCreator {
                 if (m_CustomColorPresetBrowser != null) {
                     m_CustomColorPresetBrowser.OnGUI(color => {
                         using (HorizontalScope()) {
-                            GUILayout.Label((color.Name ?? "<null>").Green(), GUILayout.ExpandWidth(false));
+                            GUILayout.Label((color.Name ?? "<null>").Green(), AutoWidth());
                             GUILayout.Space(20);
-                            GUILayout.Label(color.ToString().Cyan(), GUILayout.ExpandWidth(false));
+                            GUILayout.Label(color.ToString().Cyan(), AutoWidth());
                             GUILayout.Space(20);
                             if (GUILayout.Button("Load".Green())) {
                                 CurrentColor.Become(color);
@@ -66,20 +63,20 @@ public class CustomTexCreator {
                         }
                     });
                     using (HorizontalScope()) {
-                        GUILayout.Label("Name: ", AutoWidth());
+                        GUILayout.Label("Export Name: ", AutoWidth());
                         GUILayout.Space(10);
                         TextField(ref m_ColorName, null, GUILayout.MinWidth(50), GUILayout.MaxWidth(300), AutoWidth());
                         GUILayout.Space(10); 
                         if (!string.IsNullOrWhiteSpace(m_ColorName)) {
                             if (GUILayout.Button("Save As Preset".Cyan(), AutoWidth())) {
-                                var c = AccessTools.MakeDeepCopy<CustomColor>(CurrentColor);
+                                var c = CurrentColor.Clone();
                                 c.Name = m_ColorName;
                                 CustomColorPresets.CustomColors.Add(c);
                                 CustomColorPresets.Save();
                                 m_CustomColorPresetBrowser?.QueueUpdateItems(CustomColorPresets.CustomColors);
                             }
                         } else {
-                            GUILayout.Label("Enter a name first!".Red(), AutoWidth());
+                            GUILayout.Label("Enter a name to export your current color!".Red(), AutoWidth());
                         }
                     }
                 }
@@ -92,7 +89,7 @@ public class CustomTexCreator {
                 GUILayout.Label("Blue: ".Blue() + Mathf.RoundToInt(CurrentColor.B * 255), AutoWidth());
                 CurrentColor.B = GUILayout.HorizontalSlider(CurrentColor.B, 0f, 1f, Width(500));
 
-                if (GUILayout.Button("Apply Custom Texture", GUILayout.ExpandWidth(false))) {
+                if (GUILayout.Button("Apply Custom Texture".Orange().Bold(), AutoWidth())) {
                     return true;
                 }
                 return false;
@@ -111,15 +108,63 @@ public class CustomTexCreator {
         }
         m_CurrentlyColorIdx = Math.Min(m_CurrentlyColorIdx, AmountColors - 1);
     }
+    private void RefitCreator() {
+        m_Height = m_CurrentTex.height;
+        m_Width = m_CurrentTex.width;
+        m_CurrentlyColorIdx = Math.Min(m_CurrentlyColorIdx, AmountColors - 1);
+    }
     public void ColorPickerGrid() {
+        bool active = m_CustomColorTexPresetBrowser != null;
+        if (GUILayout.Toggle(active, "Show Texture Presets")) {
+            m_CustomColorTexPresetBrowser ??= new(c => c.ToString(), c => c.ToString(), CustomTexturePresets.CustomColorTextures, showDivBetweenItems: false);
+        } else {
+            m_CustomColorTexPresetBrowser = null;
+        }
+        if (m_CustomColorTexPresetBrowser != null) {
+            m_CustomColorTexPresetBrowser.OnGUI(tex => {
+                using (HorizontalScope()) {
+                    GUILayout.Label((tex.Name ?? "<null>").Green(), AutoWidth());
+                    GUILayout.Space(20);
+                    GUILayout.Label(tex.ToString().Cyan(), AutoWidth());
+                    GUILayout.Space(20);
+                    if (GUILayout.Button("Load".Green())) {
+                        m_CurrentTex.Become(tex);
+                        RefitCreator();
+                    }
+                    GUILayout.Space(10);
+                    if (GUILayout.Button("Remove".Red())) {
+                        CustomTexturePresets.CustomColorTextures.Remove(tex);
+                        CustomTexturePresets.Save();
+                        m_CustomColorTexPresetBrowser.QueueUpdateItems(CustomTexturePresets.CustomColorTextures);
+                    }
+                }
+            });
+            using (HorizontalScope()) {
+                GUILayout.Label("Export Name: ", AutoWidth());
+                GUILayout.Space(10);
+                TextField(ref m_TexName, null, GUILayout.MinWidth(50), GUILayout.MaxWidth(300), AutoWidth());
+                GUILayout.Space(10);
+                if (!string.IsNullOrWhiteSpace(m_TexName)) {
+                    if (GUILayout.Button("Save As Preset".Cyan(), AutoWidth())) {
+                        var tex = m_CurrentTex.Clone();
+                        tex.Name = m_TexName;
+                        CustomTexturePresets.CustomColorTextures.Add(tex);
+                        CustomTexturePresets.Save();
+                        m_CustomColorTexPresetBrowser?.QueueUpdateItems(CustomTexturePresets.CustomColorTextures);
+                    }
+                } else {
+                    GUILayout.Label("Enter a name to export your current texture!".Red(), AutoWidth());
+                }
+            }
+        }
         bool changedSize = false;
         using (HorizontalScope()) {
-            GUILayout.Label("Texture Height: ", GUILayout.ExpandWidth(false));
-            changedSize |= IntTextField(ref m_Height, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
+            GUILayout.Label("Texture Height: ", AutoWidth());
+            changedSize |= IntTextField(ref m_Height, GUILayout.MinWidth(60), AutoWidth());
         }
         using (HorizontalScope()) {
-            GUILayout.Label("Texture Width: ", GUILayout.ExpandWidth(false));
-            changedSize |= IntTextField(ref m_Width, GUILayout.MinWidth(60), GUILayout.ExpandWidth(false));
+            GUILayout.Label("Texture Width: ", AutoWidth());
+            changedSize |= IntTextField(ref m_Width, GUILayout.MinWidth(60), AutoWidth());
         }
         if (changedSize) {
             m_Height = Math.Max(1, m_Height);
@@ -127,9 +172,9 @@ public class CustomTexCreator {
             RefitTexture();
         }
         using (HorizontalScope()) {
-            GUILayout.Label("Texture Wrap Mode (What happens at the edges of the texture)", GUILayout.ExpandWidth(false));
+            GUILayout.Label("Texture Wrap Mode (What happens at the edges of the texture)", AutoWidth());
             GUILayout.Space(20);
-            if (SelectionGrid(ref m_CurrentTex.wrapMode, 4, null, GUILayout.ExpandWidth(false))) {
+            if (SelectionGrid(ref m_CurrentTex.wrapMode, 4, null, AutoWidth())) {
 
             }
         }
