@@ -7,6 +7,7 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.ResourceLinks;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.Visual.CharacterSystem;
+using Owlcat.Runtime.Core;
 using System.Collections.Concurrent;
 using System.Reflection;
 using UnityEngine;
@@ -39,6 +40,7 @@ public static class Main {
     private static bool m_OpenedInclude = false;
     private static bool m_OpenedClothingSection = false;
     private static bool m_OpenedColorSection = false;
+    private static bool m_OpenedClothingSets = false;
     private static CustomTexCreator? m_PrimaryTexCreator;
     private static CustomTexCreator? m_SecondaryTexCreator;
     internal static Browser<string> IncludeBrowser = null!;
@@ -48,8 +50,7 @@ public static class Main {
         Log = modEntry.Logger;
         Mod = modEntry;
         modEntry.OnGUI = OnGUI;
-        modEntry.OnHideGUI = OnHideGUI;
-        modEntry.OnFixedUpdate = OnFixedUpdate;
+        modEntry.OnUpdate = OnUpdate;
         IncludeBrowser = new(s => $"{m_Settings.AssetMapping[s]} {s}", s => $"{m_Settings.AssetMapping[s]} {s}", null, (Action<IEnumerable<string>> a) => {
             a(m_Settings.AssetMapping.Keys);
         }, false, (int)(EffectiveWindowWidth() * 0.95f));
@@ -57,15 +58,6 @@ public static class Main {
         HarmonyInstance = new Harmony(modEntry.Info.Id);
         HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
         return true;
-    }
-
-    private static void OnHideGUI(UnityModManager.ModEntry modEntry) {
-        m_OpenedGuide = false;
-        m_OpenedExclude = false;
-        m_OpenedInclude = false;
-        m_OpenedClothingSection = false;
-        m_OpenedColorSection = false;
-        m_SelectedOutfit = Outfit.Current;
     }
 
     private static void OnGUI(UnityModManager.ModEntry modEntry) {
@@ -83,7 +75,7 @@ public static class Main {
             }
         } else {
             try {
-                m_OpenedGuide = GUILayout.Toggle(m_OpenedGuide, "Show Guide", AutoWidth());
+                DisclosureToggle(ref m_OpenedGuide, "Show Guide", AutoWidth());
                 if (m_OpenedGuide) {
                     using (HorizontalScope()) {
                         GUILayout.Space(50);
@@ -101,7 +93,7 @@ public static class Main {
                 }
 
                 DrawDiv();
-                var units = Game.Instance?.Player?.PartyAndPets?.Where(u => u != null && !u.IsDisposed && !u.IsDisposingNow && u.IsViewActive)?.ToList() ?? [];
+                var units = Game.Instance?.Player?.PartyCharacters?.Select(u => u.Get() as BaseUnitEntity).NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList() ?? [];
                 if (units.Count > 0) {
                     GUILayout.Label("Character to change:");
 
@@ -110,7 +102,7 @@ public static class Main {
                         selectedIndex = 0;
                         PickedUnit = null;
                     }
-                    int newIndex = GUILayout.SelectionGrid(selectedIndex, units.Select(m => m.CharacterName).ToArray(), 6);
+                    int newIndex = GUILayout.SelectionGrid(selectedIndex, units.Select(m => m!.CharacterName).ToArray(), 6);
                     if (selectedIndex != newIndex || PickedUnit == null) {
                         PickedUnit = units[newIndex];
                         EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmp);
@@ -118,14 +110,21 @@ public static class Main {
                         m_SelectedOutfit = Outfit.Current;
                     }
                     DrawDiv();
-                    if (GUILayout.Button("Change Appeareance", AutoWidth())) {
-                        Helpers.OpenAppeareanceChanger(PickedUnit);
+
+                    if (PickedUnit != null) {
+
+                        if (GUILayout.Button("Change Appeareance", AutoWidth())) {
+                            Helpers.OpenAppeareanceChanger(PickedUnit);
+                        }
+                        DrawDiv();
+
+                        ClothingGUI();
+
+                        ColorGUI();
+
+                    } else {
+                        GUILayout.Label("Please pick a unit to modify first!".Green(), AutoWidth());
                     }
-                    DrawDiv();
-
-                    ClothingGUI();
-
-                    ColorGUI();
                     var newVal = GUILayout.Toggle(m_Settings.ShouldExcludeNewEEs, "Automatically exclude new items on all characters");
                     if (newVal != m_Settings.ShouldExcludeNewEEs) {
                         m_Settings.ShouldExcludeNewEEs = newVal;
@@ -136,120 +135,145 @@ public static class Main {
                 }
             } catch (Exception ex) {
                 Log.Log(ex.ToString());
+                PickedUnit = null;
+                m_OpenedGuide = false;
+                m_OpenedExclude = false;
+                m_OpenedInclude = false;
+                m_OpenedClothingSection = false;
+                m_OpenedColorSection = false;
+                m_OpenedClothingSets = false;
                 m_Error = ex;
             }
         }
     }
 
     private static void ClothingGUI() {
-        m_OpenedClothingSection = GUILayout.Toggle(m_OpenedClothingSection, "Show Clothing Section", AutoWidth());
+        DisclosureToggle(ref m_OpenedClothingSection, "Show Clothing Section", AutoWidth());
         if (m_OpenedClothingSection) {
             using (HorizontalScope()) {
                 GUILayout.Space(25);
                 using (VerticalScope()) {
-                    GUILayout.Label("Set Outfit to the following:", AutoWidth());
-                    if (SelectionGrid(ref m_SelectedOutfit, 5, m => m.ToDescriptionString())) {
-                        if (m_SelectedOutfit != Outfit.Current) {
-                            if (m_SelectedOutfit == Outfit.Naked) {
-                                EntityPartStorage.perSave.AddClothes.Remove(PickedUnit!.UniqueId);
-                                EntityPartStorage.perSave.NakedFlag[PickedUnit.UniqueId] = true;
-                            } else {
-                                var kee = ResourcesLibrary.BlueprintsCache.Load(Helpers.JobClothesIDs[m_SelectedOutfit]) as KingmakerEquipmentEntity;
-                                if (kee == null) {
+                    DisclosureToggle(ref m_OpenedClothingSets, "Show Origin Outfit Section", AutoWidth());
+                    if (m_OpenedClothingSets) {
+                        using (HorizontalScope()) {
+                            Space(25);
+                            using (VerticalScope()) {
+                                GUILayout.Label("Set Outfit to the following:", AutoWidth());
+                                if (SelectionGrid(ref m_SelectedOutfit, 5, m => m.ToDescriptionString())) {
+                                    if (m_SelectedOutfit != Outfit.Current) {
+                                        if (m_SelectedOutfit == Outfit.Naked) {
+                                            EntityPartStorage.perSave.AddClothes.Remove(PickedUnit!.UniqueId);
+                                            EntityPartStorage.perSave.NakedFlag[PickedUnit.UniqueId] = true;
+                                        } else {
+                                            var kee = ResourcesLibrary.BlueprintsCache.Load(Helpers.JobClothesIDs[m_SelectedOutfit]) as KingmakerEquipmentEntity;
+                                            if (kee == null) {
 
-                                } else {
-                                    Log.Log($"Error trying to save job clothing for job: {Helpers.JobClothesIDs[m_SelectedOutfit]}");
-                                    EntityPartStorage.perSave.AddClothes[PickedUnit!.UniqueId] = PickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? kee.m_MaleArray.Select(f => f.AssetId).ToList() : kee.m_FemaleArray.Select(f => f.AssetId).ToList();
-                                    EntityPartStorage.perSave.NakedFlag.Remove(PickedUnit.UniqueId);
-                                }
-                            }
-                        }
-                        EntityPartStorage.SavePerSaveSettings();
-                    }
-
-                    DrawDiv();
-                    if (GUILayout.Button("Reset Outfit", AutoWidth())) {
-                        EntityPartStorage.perSave.AddClothes.Remove(PickedUnit!.UniqueId);
-                        EntityPartStorage.perSave.NakedFlag.Remove(PickedUnit.UniqueId);
-                        EntityPartStorage.SavePerSaveSettings();
-                    }
-
-                    DrawDiv();
-                    m_OpenedExclude = GUILayout.Toggle(m_OpenedExclude, "Show Exclude Section", AutoWidth());
-                    if (m_OpenedExclude) {
-                        if (GUILayout.Button("Reset Excludes", AutoWidth())) {
-                            EntityPartStorage.perSave.ExcludeByName.Remove(PickedUnit!.UniqueId);
-                            EntityPartStorage.SavePerSaveSettings();
-                        }
-                        foreach (var ee in PickedUnit!.View.CharacterAvatar.EquipmentEntities.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
-                            using (HorizontalScope()) {
-                                if (GUILayout.Button("Exclude", AutoWidth())) {
-                                    EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var tmpExcludes);
-                                    if (tmpExcludes == null) tmpExcludes = new();
-                                    tmpExcludes.Add(ee.name);
-                                    EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes;
+                                            } else {
+                                                Log.Log($"Error trying to save job clothing for job: {Helpers.JobClothesIDs[m_SelectedOutfit]}");
+                                                EntityPartStorage.perSave.AddClothes[PickedUnit!.UniqueId] = PickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? kee.m_MaleArray.Select(f => f.AssetId).ToList() : kee.m_FemaleArray.Select(f => f.AssetId).ToList();
+                                                EntityPartStorage.perSave.NakedFlag.Remove(PickedUnit.UniqueId);
+                                            }
+                                        }
+                                    }
                                     EntityPartStorage.SavePerSaveSettings();
                                 }
-                                GUILayout.Label($"    {ee?.name ?? "Null????????????"}");
-                            }
-                        }
-                        GUILayout.Label("------------------------------------------");
-                        GUILayout.Label("Current Excludes:");
-                        EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var currentExcludes);
-                        if (currentExcludes?.Count > 0) {
-                            foreach (var eeName in currentExcludes.ToList()) {
-                                using (HorizontalScope()) {
-                                    if (GUILayout.Button("Remove Exclusion", AutoWidth())) {
-                                        EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var tmpExcludes);
-                                        if (tmpExcludes == null) tmpExcludes = new();
-                                        tmpExcludes.Remove(eeName);
-                                        EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes;
-                                        EntityPartStorage.SavePerSaveSettings();
-                                    }
-                                    GUILayout.Label($"    {eeName}");
+
+                                DrawDiv();
+                                if (GUILayout.Button("Reset Outfit", AutoWidth())) {
+                                    EntityPartStorage.perSave.AddClothes.Remove(PickedUnit!.UniqueId);
+                                    EntityPartStorage.perSave.NakedFlag.Remove(PickedUnit.UniqueId);
+                                    EntityPartStorage.SavePerSaveSettings();
                                 }
                             }
                         }
                     }
 
                     DrawDiv();
-                    m_OpenedInclude = GUILayout.Toggle(m_OpenedInclude, "Show Include Section", AutoWidth());
-                    if (m_OpenedInclude) {
-                        if (GUILayout.Button("Reset Includes", AutoWidth())) {
-                            EntityPartStorage.perSave.IncludeByName.Remove(PickedUnit!.UniqueId);
-                            IncludeBrowser.QueueUpdateItems([]);
-                            EntityPartStorage.SavePerSaveSettings();
-                        }
-                        EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit!.UniqueId, out var currentIncludes);
-                        m_IncludeBrowserLabelWidth ??= CalculateLargestLabelSize(["Remove", "Include"], GUI.skin.button);
-                        IncludeBrowser.OnGUI(guid => {
-                            using (HorizontalScope()) {
-                                if (currentIncludes?.Contains(guid) ?? false) {
-                                    GUILayout.Label($"{m_Settings.AssetMapping[guid]}".Cyan(), Width(IncludeBrowser.TrackedWidth!.Value));
-                                    GUILayout.Space(20);
-                                    if (GUILayout.Button("Remove", GUILayout.Width(m_IncludeBrowserLabelWidth.Value))) {
-                                        currentIncludes.Remove(guid);
-                                        IncludeBrowser.QueueUpdateItems(currentIncludes);
-                                        EntityPartStorage.perSave.IncludeByName[PickedUnit.UniqueId] = currentIncludes;
-                                        EntityPartStorage.SavePerSaveSettings();
+                    DisclosureToggle(ref m_OpenedExclude, "Show Exclude Section", AutoWidth());
+                    if (m_OpenedExclude) {
+                        using (HorizontalScope()) {
+                            Space(25);
+                            using (VerticalScope()) {
+                                if (GUILayout.Button("Reset Excludes", AutoWidth())) {
+                                    EntityPartStorage.perSave.ExcludeByName.Remove(PickedUnit!.UniqueId);
+                                    EntityPartStorage.SavePerSaveSettings();
+                                }
+                                foreach (var ee in PickedUnit!.View.CharacterAvatar.EquipmentEntities.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
+                                    using (HorizontalScope()) {
+                                        if (GUILayout.Button("Exclude", AutoWidth())) {
+                                            EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var tmpExcludes);
+                                            if (tmpExcludes == null) tmpExcludes = new();
+                                            tmpExcludes.Add(ee.name);
+                                            EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes;
+                                            EntityPartStorage.SavePerSaveSettings();
+                                        }
+                                        GUILayout.Label($"    {ee?.name ?? "Null????????????"}");
                                     }
-                                    GUILayout.Space(20);
-                                    GUILayout.TextArea($"{guid}", Width(IncludeBrowser.TrackedWidth2!.Value));
-                                } else {
-                                    GUILayout.Label($"{m_Settings.AssetMapping[guid]}".Green(), Width(IncludeBrowser.TrackedWidth!.Value));
-                                    GUILayout.Space(20);
-                                    if (GUILayout.Button("Include", GUILayout.Width(m_IncludeBrowserLabelWidth.Value))) {
-                                        currentIncludes ??= [];
-                                        currentIncludes.Add(guid);
-                                        IncludeBrowser.QueueUpdateItems(currentIncludes);
-                                        EntityPartStorage.perSave.IncludeByName[PickedUnit.UniqueId] = currentIncludes;
-                                        EntityPartStorage.SavePerSaveSettings();
+                                }
+                                GUILayout.Label("------------------------------------------");
+                                GUILayout.Label("Current Excludes:");
+                                EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var currentExcludes);
+                                if (currentExcludes?.Count > 0) {
+                                    foreach (var eeName in currentExcludes.ToList()) {
+                                        using (HorizontalScope()) {
+                                            if (GUILayout.Button("Remove Exclusion", AutoWidth())) {
+                                                EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var tmpExcludes);
+                                                if (tmpExcludes == null) tmpExcludes = new();
+                                                tmpExcludes.Remove(eeName);
+                                                EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes;
+                                                EntityPartStorage.SavePerSaveSettings();
+                                            }
+                                            GUILayout.Label($"    {eeName}");
+                                        }
                                     }
-                                    GUILayout.Space(20);
-                                    GUILayout.TextArea($"{guid}", Width(IncludeBrowser.TrackedWidth2!.Value));
                                 }
                             }
-                        });
+                        }
+                    }
+
+                    DrawDiv();
+                    DisclosureToggle(ref m_OpenedInclude, "Show Include Section", AutoWidth());
+                    if (m_OpenedInclude) {
+                        using (HorizontalScope()) {
+                            Space(25);
+                            using (VerticalScope()) {
+                                if (GUILayout.Button("Reset Includes", AutoWidth())) {
+                                    EntityPartStorage.perSave.IncludeByName.Remove(PickedUnit!.UniqueId);
+                                    IncludeBrowser.QueueUpdateItems([]);
+                                    EntityPartStorage.SavePerSaveSettings();
+                                }
+                                EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit!.UniqueId, out var currentIncludes);
+                                m_IncludeBrowserLabelWidth ??= CalculateLargestLabelSize(["Remove", "Include"], GUI.skin.button);
+                                IncludeBrowser.OnGUI(guid => {
+                                    using (HorizontalScope()) {
+                                        if (currentIncludes?.Contains(guid) ?? false) {
+                                            GUILayout.Label($"{m_Settings.AssetMapping[guid]}".Cyan(), Width(IncludeBrowser.TrackedWidth!.Value));
+                                            GUILayout.Space(20);
+                                            if (GUILayout.Button("Remove", GUILayout.Width(m_IncludeBrowserLabelWidth.Value))) {
+                                                currentIncludes.Remove(guid);
+                                                IncludeBrowser.QueueUpdateItems(currentIncludes);
+                                                EntityPartStorage.perSave.IncludeByName[PickedUnit.UniqueId] = currentIncludes;
+                                                EntityPartStorage.SavePerSaveSettings();
+                                            }
+                                            GUILayout.Space(20);
+                                            GUILayout.TextArea($"{guid}", Width(IncludeBrowser.TrackedWidth2!.Value));
+                                        } else {
+                                            GUILayout.Label($"{m_Settings.AssetMapping[guid]}".Green(), Width(IncludeBrowser.TrackedWidth!.Value));
+                                            GUILayout.Space(20);
+                                            if (GUILayout.Button("Include", GUILayout.Width(m_IncludeBrowserLabelWidth.Value))) {
+                                                currentIncludes ??= [];
+                                                currentIncludes.Add(guid);
+                                                IncludeBrowser.QueueUpdateItems(currentIncludes);
+                                                EntityPartStorage.perSave.IncludeByName[PickedUnit.UniqueId] = currentIncludes;
+                                                EntityPartStorage.SavePerSaveSettings();
+                                            }
+                                            GUILayout.Space(20);
+                                            GUILayout.TextArea($"{guid}", Width(IncludeBrowser.TrackedWidth2!.Value));
+                                        }
+                                    }
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -258,7 +282,7 @@ public static class Main {
     }
 
     private static void ColorGUI() {
-        m_OpenedColorSection = GUILayout.Toggle(m_OpenedColorSection, "Show Color Section", AutoWidth());
+        DisclosureToggle(ref m_OpenedColorSection, "Show Color Section", AutoWidth());
         if (m_OpenedColorSection) {
             using (HorizontalScope()) {
                 GUILayout.Space(25);
@@ -391,7 +415,7 @@ public static class Main {
 
         DrawDiv();
     }
-    private static void OnFixedUpdate(UnityModManager.ModEntry modEntry, float z) {
+    private static void OnUpdate(UnityModManager.ModEntry modEntry, float z) {
         try {
             while (m_MainThreadTaskQueue.TryDequeue(out var task)) {
                 task();

@@ -40,8 +40,8 @@ public class CustomTexCreator {
             using (VerticalScope()) {
                 bool active = m_CustomColorPresetBrowser != null;
                 using (HorizontalScope()) {
-                    Space(-3);
-                    if (GUILayout.Toggle(active, "Show Color Presets")) {
+                    DisclosureToggle(ref active, "Show Color Presets");
+                    if (active) {
                         m_CustomColorPresetBrowser ??= new(c => c.ToString(), c => c.ToString(), CustomColorPresets.CustomColors, showDivBetweenItems: false);
                     } else {
                         m_CustomColorPresetBrowser = null;
@@ -119,8 +119,8 @@ public class CustomTexCreator {
     public void ColorPickerGrid() {
         bool active = m_CustomColorTexPresetBrowser != null;
         using (HorizontalScope()) {
-            Space(-3);
-            if (GUILayout.Toggle(active, "Show Texture Presets")) {
+            DisclosureToggle(ref active, "Show Texture Presets");
+            if (active) {
                 m_CustomColorTexPresetBrowser ??= new(c => c.ToString(), c => c.ToString(), CustomTexturePresets.CustomColorTextures, showDivBetweenItems: false);
             } else {
                 m_CustomColorTexPresetBrowser = null;
