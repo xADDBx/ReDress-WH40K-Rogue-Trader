@@ -1,12 +1,16 @@
 ﻿using Kingmaker;
+using Kingmaker.Blueprints.Root;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.PubSubSystem.Core;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
+using Kingmaker.PubSubSystem.Core;
 using Kingmaker.UI.MVVM.VM.CharGen;
 using Kingmaker.View;
 using Kingmaker.Visual.CharacterSystem;
 using Kingmaker.Visual.Sound;
+using RogueTrader.Code.ShaderConsts;
 using System.ComponentModel;
+using UnityEngine;
 using UnityModManagerNet;
 
 namespace ReDress;
@@ -50,15 +54,158 @@ public static class Helpers {
     }
 
     public static void SetColorPair(EquipmentEntity ee, RampColorPreset.IndexSet pair) {
-        if (pair.PrimaryIndex >= 0) {
-            Main.PickedUnit!.View.CharacterAvatar.SetPrimaryRampIndex(ee, pair.PrimaryIndex);
+        DoForEachValidUnit(unit => {
+            if (pair.PrimaryIndex >= 0) {
+                unit.View.CharacterAvatar.SetPrimaryRampIndex(ee, pair.PrimaryIndex);
+            }
+            if (pair.SecondaryIndex >= 0) {
+                unit.View.CharacterAvatar.SetSecondaryRampIndex(ee, pair.SecondaryIndex);
+            }
+            unit.View.CharacterAvatar.IsAtlasesDirty = true;
+            EventBus.RaiseEvent(unit, (IUnitVisualChangeHandler h) => {
+                h.HandleUnitChangeEquipmentColor(pair.PrimaryIndex, false);
+            }, true);
+        });
+    }
+    internal static Dictionary<Character, string> UIdCache = [];
+    public static string? GetUIdFromCharacter(Character c) {
+        if (UIdCache.TryGetValue(c, out var uId)) {
+            return uId;
+        } else {
+            Main.Log.Log($"Can't find Owner Uid for Character {c.name} - {c}");
+            Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+            return null;
         }
-        if (pair.SecondaryIndex >= 0) {
-            Main.PickedUnit!.View.CharacterAvatar.SetSecondaryRampIndex(ee, pair.SecondaryIndex);
+    }
+    public static bool IsSave(AbstractUnitEntity? unit) {
+        return unit != null && !unit.IsDisposed && !unit.IsDisposingNow;
+    }
+    public static string? GetUIdFromUnit(AbstractUnitEntity? unit, bool onlyWhenMatchingPickedUnit = true) {
+        return IsSave(unit) ? unit!.UniqueId : null;
+    }
+    public static void DoForEachValidUnit(Action<AbstractUnitEntity> applyToUnit) {
+        if (IsSave(Main.PickedUnit)) {
+            applyToUnit(Main.PickedUnit!);
         }
-        Main.PickedUnit!.View.CharacterAvatar.IsAtlasesDirty = true;
-        EventBus.RaiseEvent(Main.PickedUnit, (IUnitVisualChangeHandler h) => {
-            h.HandleUnitChangeEquipmentColor(pair.PrimaryIndex, false);
-        }, true);
+    }
+    public static List<Material> GetMats(Character __instance, EquipmentEntity ee) {
+        List<Material> mats = [];
+        foreach (Character.OutfitPartInfo outfitPartInfo in __instance.m_OutfitObjectsSpawned) {
+            if (outfitPartInfo.Ee == ee) {
+                if (outfitPartInfo.OutfitPart.ColorMask == null) {
+                    break;
+                }
+                var renderer = outfitPartInfo.GameObject.GetComponentInChildren<Renderer>();
+                foreach (Material material in renderer.sharedMaterials) {
+                    mats.Add(material);
+                }
+            }
+        }
+        return mats;
+    }
+    private static List<Material> GetMats(Renderer renderer, Character c, EquipmentEntity ee, EquipmentEntity.OutfitPart outfit, string goName) {
+        List<Material> ret = [];
+        if (renderer != null) {
+            foreach (var mat in renderer.sharedMaterials) {
+                Material mat2 = new(BlueprintRoot.Instance.CharGenRoot.EquipmentColorizerShader);
+                mat2.SetTexture(ShaderProps._BaseMap, mat.GetTexture(ShaderProps._BaseMap));
+                mat2.SetTexture(ShaderProps._BumpMap, mat.GetTexture(ShaderProps._BumpMap));
+                mat2.SetTexture(ShaderProps._MasksMap, mat.GetTexture(ShaderProps._MasksMap));
+                mat2.SetTexture(ShaderProps._ColorMask, outfit.ColorMask);
+                Character.SelectedRampIndices selectedRampIndices = c.RampIndices.FirstOrDefault((Character.SelectedRampIndices i) => i.EquipmentEntity == ee);
+                if (selectedRampIndices != null) {
+                    if (ee.PrimaryRamps.Count > selectedRampIndices.PrimaryIndex && selectedRampIndices.PrimaryIndex >= 0) {
+                        mat2.SetTexture(ShaderProps._Ramp1, ee.PrimaryRamps[selectedRampIndices.PrimaryIndex]);
+                    }
+                    if (ee.SecondaryRamps.Count > selectedRampIndices.SecondaryIndex && selectedRampIndices.SecondaryIndex >= 0) {
+                        mat2.SetTexture(ShaderProps._Ramp2, ee.SecondaryRamps[selectedRampIndices.SecondaryIndex]);
+                    }
+                }
+                mat2.name = goName + "_material";
+                ret.Add(mat2);
+            }
+        }
+        return ret;
+    }
+    public static void ColourOutfitPart(Renderer renderer, Character c, EquipmentEntity ee, EquipmentEntity.OutfitPart outfitPart, string goName) {
+        var uid = GetUIdFromCharacter(c);
+        if (uid == null) {
+            Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+            return;
+        }
+        List<Material>? mats = null;
+        if (EntityPartStorage.perSave.RampOverrideByName.TryGetValue(uid, out var overrides)) {
+            mats = GetMats(renderer, c, ee, outfitPart, goName);
+            var eeName = ee.name ?? ee.ToString();
+            if (eeName == null) {
+                Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+                return;
+            }
+            if (overrides.TryGetValue(eeName, out var pair)) {
+                foreach (var mat in mats) {
+                    mat.SetTexture(ShaderProps._Ramp1, ee.PrimaryRamps[pair.PrimaryIndex]);
+                    mat.SetTexture(ShaderProps._Ramp2, ee.SecondaryRamps[pair.PrimaryIndex]);
+                }
+            }
+        }
+        if (EntityPartStorage.perSave.CustomColorsByName.TryGetValue(uid, out var overrides2)) {
+            mats = GetMats(renderer, c, ee, outfitPart, goName);
+            var eeName = ee.name ?? ee.ToString();
+            if (eeName == null) {
+                Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+                return;
+            }
+            if (overrides2.TryGetValue(eeName, out var customColor)) {
+                foreach (var mat in mats) {
+                    if (customColor.Item1 != null) {
+                        mat.SetTexture(ShaderProps._Ramp1, customColor.Item1.MakeTex());
+                    }
+                    if (customColor.Item2 != null) {
+                        mat.SetTexture(ShaderProps._Ramp2, customColor.Item2.MakeTex());
+                    }
+                }
+            }
+        }
+    }
+    public static void ColourOutfitPart(List<Material> mats, Character c, EquipmentEntity ee) {
+        Patches.IsOutfitColoured = true;
+        ColourOutfitPartInternal(mats, c, ee);
+    }
+    private static void ColourOutfitPartInternal(List<Material> mats, Character c, EquipmentEntity ee) {
+        var uid = GetUIdFromCharacter(c);
+        if (uid == null) {
+            Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+            return;
+        }
+        if (EntityPartStorage.perSave.RampOverrideByName.TryGetValue(uid, out var overrides)) {
+            var eeName = ee.name ?? ee.ToString();
+            if (eeName == null) {
+                Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+                return;
+            }
+            if (overrides.TryGetValue(eeName, out var pair)) {
+                foreach (var mat in mats) {
+                    mat.SetTexture(ShaderProps._Ramp1, ee.PrimaryRamps[pair.PrimaryIndex]);
+                    mat.SetTexture(ShaderProps._Ramp2, ee.SecondaryRamps[pair.PrimaryIndex]);
+                }
+            }
+        }
+        if (EntityPartStorage.perSave.CustomColorsByName.TryGetValue(uid, out var overrides2)) {
+            var eeName = ee.name ?? ee.ToString();
+            if (eeName == null) {
+                Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+                return;
+            }
+            if (overrides2.TryGetValue(eeName, out var customColor)) {
+                foreach (var mat in mats) {
+                    if (customColor.Item1 != null) {
+                        mat.SetTexture(ShaderProps._Ramp1, customColor.Item1.MakeTex());
+                    }
+                    if (customColor.Item2 != null) {
+                        mat.SetTexture(ShaderProps._Ramp2, customColor.Item2.MakeTex());
+                    }
+                }
+            }
+        }
     }
 }

@@ -3,7 +3,10 @@
 3. Changed Color UI
 4. Added Color Presets
 5. Added Texture Presets
-6. ShouldExcludeNewEEs setting has been reset, i.e. it needs to be turned on again.
+6. Changes to cape now persist
+7. Color section now works for stuff where it didn't work before (e.g. Capes)
+8. ShouldExcludeNewEEs setting has been reset, i.e. it needs to be turned on again.
+9. Some more minor fixes
 
 TODO:
 - Memory Leak?

@@ -198,11 +198,14 @@ public static class Main {
                                     EntityPartStorage.perSave.ExcludeByName.Remove(PickedUnit!.UniqueId);
                                     EntityPartStorage.SavePerSaveSettings();
                                 }
+                                EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmpExcludes);
+                                tmpExcludes ??= [];
                                 foreach (var ee in PickedUnit!.View.CharacterAvatar.EquipmentEntities.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
+                                    if (tmpExcludes.Contains(ee.name)) {
+                                        continue;
+                                    }
                                     using (HorizontalScope()) {
                                         if (GUILayout.Button("Exclude", AutoWidth())) {
-                                            EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var tmpExcludes);
-                                            if (tmpExcludes == null) tmpExcludes = new();
                                             tmpExcludes.Add(ee.name);
                                             EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes;
                                             EntityPartStorage.SavePerSaveSettings();
@@ -217,10 +220,10 @@ public static class Main {
                                     foreach (var eeName in currentExcludes.ToList()) {
                                         using (HorizontalScope()) {
                                             if (GUILayout.Button("Remove Exclusion", AutoWidth())) {
-                                                EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var tmpExcludes);
-                                                if (tmpExcludes == null) tmpExcludes = new();
-                                                tmpExcludes.Remove(eeName);
-                                                EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes;
+                                                EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var tmpExcludes2);
+                                                tmpExcludes2 ??= [];
+                                                tmpExcludes2.Remove(eeName);
+                                                EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes2;
                                                 EntityPartStorage.SavePerSaveSettings();
                                             }
                                             GUILayout.Label($"    {eeName}");
