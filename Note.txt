@@ -1,14 +1,13 @@
-1. Refactored the code base a lot
-2. Changed Include UI
-3. Changed Color UI
-4. Added Color Presets
-5. Added Texture Presets
-6. Changes to cape now persist
-7. Color section now works for stuff where it didn't work before (e.g. Capes)
-8. ShouldExcludeNewEEs setting has been reset, i.e. it needs to be turned on again.
-9. Some more minor fixes
+- Changed Include UI
+- Changed Color UI
+- Added Color Presets
+- Added Texture Presets
+- Changes to cape now persist
+- Color section now works for stuff where it didn't work before (e.g. Capes)
+- ShouldExcludeNewEEs setting has been reset, i.e. it needs to be turned on again.
+- Refactored the code base a lot
+- Some more minor fixes
 
 TODO:
-- Memory Leak?
-- Internal Rewrite (Unit Identity/Hashing)
-- Change guide section (link to the google doc + the reddit guide?)
+- UI Memory leak? (Lag after some time)
+- Change guide section (link to the google doc + the reddit guide?); ***Suggestions welcome***

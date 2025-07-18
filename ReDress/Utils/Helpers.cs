@@ -4,12 +4,14 @@ using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.UI.Common;
 using Kingmaker.UI.MVVM.VM.CharGen;
 using Kingmaker.View;
 using Kingmaker.Visual.CharacterSystem;
 using Kingmaker.Visual.Sound;
 using RogueTrader.Code.ShaderConsts;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -67,8 +69,11 @@ public static class Helpers {
             }, true);
         });
     }
-    internal static Dictionary<Character, string> UIdCache = [];
+    internal static ConditionalWeakTable<Character, string> UIdCache = new();
     public static string? GetUIdFromCharacter(Character c) {
+        if (c.IsInDollRoom) {
+            c = UIDollRooms.Instance.CharacterDollRoom.m_OriginalAvatar;
+        }
         if (UIdCache.TryGetValue(c, out var uId)) {
             return uId;
         } else {

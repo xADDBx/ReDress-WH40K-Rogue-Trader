@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace ReDress;
 public static class ArrayHasher {
-    private static XxHash64 m_Hasher = new();
+    private static readonly XxHash64 m_Hasher = new();
     public static ulong ComputeHash(List<EntityPartStorage.CustomColor> data, int height, int width) {
         var floats = new float[3 * height * width];
         data.SelectMany<EntityPartStorage.CustomColor, float>(c => [c.R, c.G, c.B]).ToArray().AsSpan();

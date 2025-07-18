@@ -27,7 +27,9 @@ public static class Patches {
     [HarmonyPatch(typeof(AbstractUnitEntityView), nameof(AbstractUnitEntityView.SetupCharacterAvatar)), HarmonyPrefix]
     private static void AbstractUnitEntityView_SetupCharacterAvatar(Character character, AbstractUnitEntityView __instance) {
         if (character != null) {
-            Helpers.UIdCache[character] = __instance.UniqueId;
+            try {
+                Helpers.UIdCache.Add(character, __instance.UniqueId);
+            } catch (ArgumentException) { }
         }
     }
     [HarmonyPatch(typeof(DollData), nameof(DollData.CreateUnitView)), HarmonyTranspiler]
@@ -42,8 +44,10 @@ public static class Patches {
         }
     }
     private static void SaveCharacterForId(Character c) {
-        if (m_CurrentUid != null) {
-            Helpers.UIdCache[c] = m_CurrentUid;
+        if (m_CurrentUid != null && c != null) {
+            try {
+                Helpers.UIdCache.Add(c, m_CurrentUid);
+            } catch (ArgumentException) { }
         }
     }
     [HarmonyPatch(typeof(PartUnitViewSettings), nameof(PartUnitViewSettings.Instantiate)), HarmonyPrefix]
@@ -264,7 +268,7 @@ public static class Patches {
                 mats = Helpers.GetMats(__instance, ee);
                 var eeName = ee.name ?? ee.ToString();
                 if (eeName == null) {
-                    Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+                    Log.Log(new System.Diagnostics.StackTrace().ToString());
                     return;
                 }
                 if (overrides.TryGetValue(eeName, out var pair)) {
@@ -278,7 +282,7 @@ public static class Patches {
                 mats = Helpers.GetMats(__instance, ee);
                 var eeName = ee.name ?? ee.ToString();
                 if (eeName == null) {
-                    Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+                    Log.Log(new System.Diagnostics.StackTrace().ToString());
                     return;
                 }
                 if (overrides2.TryGetValue(eeName, out var customColor)) {
@@ -315,7 +319,6 @@ public static class Patches {
             EntityPartStorage.ClearCachedPerSave();
             if (m_IsCurrentlyLoadingGame) {
                 m_CachedLinks.Clear();
-                Helpers.UIdCache.Clear();
                 m_IsCurrentlyLoadingGame = false;
             }
         }
@@ -340,12 +343,6 @@ public static class Patches {
         [HarmonyPatch(nameof(CharacterDollRoom.Hide)), HarmonyPrefix]
         private static void Hide() {
             m_ForceNoExcludeNewEEs = true;
-        }
-        [HarmonyPatch(nameof(CharacterDollRoom.SetAvatar)), HarmonyPrefix]
-        private static void SetAvatar(Character avatar, CharacterDollRoom __instance) {
-            if (avatar != null) {
-                Helpers.UIdCache[avatar] = __instance.m_Unit.UniqueId;
-            }
         }
     }
 }
