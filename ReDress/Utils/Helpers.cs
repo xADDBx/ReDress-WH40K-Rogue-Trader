@@ -72,13 +72,15 @@ public static class Helpers {
     internal static ConditionalWeakTable<Character, string> UIdCache = new();
     public static string? GetUIdFromCharacter(Character c) {
         if (c.IsInDollRoom) {
-            c = UIDollRooms.Instance.CharacterDollRoom.m_OriginalAvatar;
+            c = UIDollRooms.Instance.CharacterDollRoom.m_OriginalAvatar ?? c;
         }
         if (UIdCache.TryGetValue(c, out var uId)) {
             return uId;
         } else {
+#if DEBUG
             Main.Log.Log($"Can't find Owner Uid for Character {c.name} - {c}");
             Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
             return null;
         }
     }

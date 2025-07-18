@@ -75,28 +75,69 @@ public static class Main {
             }
         } else {
             try {
-                DisclosureToggle(ref m_OpenedGuide, "Show Guide", AutoWidth());
+                DisclosureToggle(ref m_OpenedGuide, "Show Explanations", AutoWidth());
                 if (m_OpenedGuide) {
                     using (HorizontalScope()) {
-                        GUILayout.Space(50);
+                        GUILayout.Space(25);
                         using (VerticalScope()) {
-                            GUILayout.Label("Pick one of the listed characters", AutoWidth());
-                            GUILayout.Label("To change the appeareance for the chosen character just click the \"Change Appeareance\" button.", AutoWidth());
-                            GUILayout.Label("To change the outfit just click on the button for the respective outfit (to reset to default use the \"Reset Oufit\" button.", AutoWidth());
-                            GUILayout.Label("To change the outfit of your companions you will probably need to manually exclude the old one. To do that you need to open the exclude section and click on \"Exclude\" for the respective outfit parts.", AutoWidth());
-                            GUILayout.Label("As an example, to change the outfit of Heinrix you need to add \"EE_BaseoutfitHeinrix...\", \"EE_CapeBaseoutfitHeinrix...\" and \"EE_PantsHeinrix...\" to the excludes.", AutoWidth());
-                            GUILayout.Label("To reset the excludes just click \"Reset Excludes\" or remove them from the \"Current Excludes\" section", AutoWidth());
-                            GUILayout.Label("The Include Section allows you to pick from all the visual entities in the game and add them to your character.", AutoWidth());
-                            GUILayout.Label("Together with the Exclude Section this <i>basically</i> allows building arbitrary outfits using the outfit parts built into the game.", AutoWidth());
+                            GUILayout.Label("Character Creation Window".Orange(), AutoWidth());
+                            using (HorizontalScope()) {
+                                Space(20);
+                                using (VerticalScope()) {
+                                    GUILayout.Label("This feature is basically the mirror in the Captain's Quarters, just that it's possible to use it for every unit.".Green(), AutoWidth());
+                                    GUILayout.Label("It allows going through the appeareance-related steps of the character creation again.".Green(), AutoWidth());
+                                }
+                            }
+                            GUILayout.Label("Clothing Section".Orange(), AutoWidth());
+                            using (HorizontalScope()) {
+                                Space(20);
+                                using (VerticalScope()) {
+                                    GUILayout.Label("This section allows modifying the outfit pieces characters have. There are 3 subsections.".Green(), AutoWidth());
+                                    LinkButton("Link to a Google Document showing all the EquipmentEntities; Made by andvarieve", "https://docs.google.com/document/d/1HYRtdrcfq7SbdqK_qmDXC_v9DUH2YY0z_k9lCBJ2SW4/edit?tab=t.0#heading=h.pynrd3mueab2");
+                                    GUILayout.Label("Origin Outfit Subsection:".Green(), AutoWidth());
+                                    using (HorizontalScope()) {
+                                        Space(20);
+                                        using (VerticalScope()) {
+                                            GUILayout.Label("This allows changing your current origin outfit to one of the other ones.".Cyan(), AutoWidth());
+                                            GUILayout.Label("Internally this is done by excluding the outfit parts of all other origins and including the ones of the origin you pick.".Cyan(), AutoWidth());
+                                        }
+                                    }
+                                    GUILayout.Label("Exclude Subsection:".Green(), AutoWidth());
+                                    using (HorizontalScope()) {
+                                        Space(20);
+                                        using (VerticalScope()) {
+                                            GUILayout.Label("This section shows you the EquipmentEntities (EE, the pieces of clothing you wear and body parts) of the current unit.".Cyan(), AutoWidth());
+                                            GUILayout.Label("Excluding an EE will cause it to disappear from the unit.".Cyan(), AutoWidth());
+                                        }
+                                    }
+                                    GUILayout.Label("Include Subsection:".Green(), AutoWidth());
+                                    using (HorizontalScope()) {
+                                        Space(20);
+                                        using (VerticalScope()) {
+                                            GUILayout.Label("This section allows you to add additional EEs to the currently selected unit.".Cyan(), AutoWidth());
+                                            GUILayout.Label("Turn off the \"Show All\" toggle to display only the EEs you are currently including (e.g. to make removing them easier).".Cyan(), AutoWidth());
+                                        }
+                                    }
+                                }
+                            }
+                            GUILayout.Label("Color Section".Orange(), AutoWidth());
+                            using (HorizontalScope()) {
+                                Space(20);
+                                using (VerticalScope()) {
+                                    GUILayout.Label("This section shows a list of EEs on the current unit and <i>can</i> allow recoloring them.".Green(), AutoWidth());
+                                    GUILayout.Label("Ramps are basically built-in variations of outfits. Not every EE has ramps. If an EE has ramps, you can select one of the preset pairs as override.".Green(), AutoWidth());
+                                    GUILayout.Label("Each EE has a primary and a secondary ramp texture. How they are used (or if they are used at all) depends on the EE.".Green(), AutoWidth());
+                                    GUILayout.Label("The Custom Color Pickers allow creating custom textures for the primary and secondary ramp.".Green(), AutoWidth());
+                                }
+                            }
                         }
                     }
                 }
-
                 DrawDiv();
                 var units = Game.Instance?.Player?.PartyCharacters?.Select(u => u.Get() as BaseUnitEntity).NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList() ?? [];
                 if (units.Count > 0) {
-                    GUILayout.Label("Character to change:");
-
+                    GUILayout.Label("Pick the character you want to modify:");
+                    Space(5);
                     int selectedIndex = PickedUnit != null ? units.IndexOf(PickedUnit) : 0;
                     if (selectedIndex < 0) {
                         selectedIndex = 0;
@@ -112,8 +153,7 @@ public static class Main {
                     DrawDiv();
 
                     if (PickedUnit != null) {
-
-                        if (GUILayout.Button("Change Appeareance", AutoWidth())) {
+                        if (GUILayout.Button("Open the Character Creation window for this character", AutoWidth())) {
                             Helpers.OpenAppeareanceChanger(PickedUnit);
                         }
                         DrawDiv();

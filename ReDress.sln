@@ -8,7 +8,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{465C902E-55CF-4518-B341-1573B0EB0C1C}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
-		Note.txt = Note.txt
 		Repository.json = Repository.json
 		Thumbnail.jpg = Thumbnail.jpg
 		Workshop-description.txt = Workshop-description.txt

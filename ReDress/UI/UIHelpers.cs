@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityModManagerNet;
 
-namespace ReDress; 
+namespace ReDress;
 public static class UIHelpers {
     public static bool PressedEnterInControl(string controlName) {
         Event e = Event.current;
@@ -131,34 +131,27 @@ public static class UIHelpers {
         }
         return changed;
     }
+    private static GUIStyle? m_DivGUIStyle;
     public static void DrawDiv() {
         using (VerticalScope()) {
-            GUILayout.Space(10);
-        }
-        float indent = 0;
-        float height = 0;
-        float width = 0;
-        Color color = new(1f, 1f, 1f, 0.65f);
-        Texture2D fillTexture = new(1, 1);
-        var divStyle = new GUIStyle {
-            fixedHeight = 1,
-        };
-        fillTexture.SetPixel(0, 0, color);
-        fillTexture.Apply();
-        divStyle.normal.background = fillTexture;
-        if (divStyle.margin == null) {
-            divStyle.margin = new RectOffset((int)indent, 0, 4, 4);
-        } else {
-            divStyle.margin.left = (int)indent + 3;
-        }
-        if (width > 0)
-            divStyle.fixedWidth = width;
-        else
-            divStyle.fixedWidth = 0;
-        GUILayout.Space((2f * height) / 3f);
-        GUILayout.Box(GUIContent.none, divStyle);
-        GUILayout.Space(height / 3f);
-        using (VerticalScope()) {
+            GUILayout.Space(5);
+            if (m_DivGUIStyle == null) {
+                m_DivGUIStyle = new GUIStyle {
+                    fixedHeight = 1,
+                };
+                Color color = new(1f, 1f, 1f, 0.65f);
+                var divFillTexture = new Texture2D(1, 1);
+                divFillTexture.SetPixel(0, 0, color);
+                divFillTexture.Apply();
+                m_DivGUIStyle.normal.background = divFillTexture;
+                if (m_DivGUIStyle.margin == null) {
+                    m_DivGUIStyle.margin = new RectOffset(0, 0, 4, 4);
+                } else {
+                    m_DivGUIStyle.margin.left = 3;
+                }
+                m_DivGUIStyle.fixedWidth = 0;
+            }
+            GUILayout.Box(GUIContent.none, m_DivGUIStyle);
             GUILayout.Space(5);
         }
     }
@@ -171,5 +164,41 @@ public static class UIHelpers {
             }
         }
         return false;
+    }
+
+    private static GUIStyle LinkStyle {
+        get {
+            if (field == null) {
+                field = new GUIStyle(GUI.skin.label) {
+                    wordWrap = false,
+                    normal = { textColor = new Color(0f, 0.75f, 1f) },
+                    hover = { textColor = new Color(0.2f, 0.85f, 1f) },
+                    margin = { left = 0, right = 0, top = 0, bottom = 0 },
+                    padding = new RectOffset(0, 0, 0, 0),
+                };
+                field.stretchWidth = false;
+            }
+            return field;
+        }
+    }
+
+    public static void LinkButton(string title, string url) {
+        using (HorizontalScope()) {
+            Space(4);
+            Rect rect = GUILayoutUtility.GetRect(new GUIContent(title), LinkStyle, GUILayout.ExpandWidth(false));
+
+            if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition)) {
+                Application.OpenURL(url);
+                Event.current.Use();
+            }
+
+            GUI.Label(rect, title, LinkStyle);
+
+            var underlineThickness = 1f;
+            var underlineY = rect.yMax - underlineThickness / 2f + 2f;
+            var underlineRect = new Rect(rect.x, underlineY, rect.width, underlineThickness);
+
+            GUI.DrawTexture(underlineRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, LinkStyle.normal.textColor, 0f, 0f);
+        }
     }
 }
