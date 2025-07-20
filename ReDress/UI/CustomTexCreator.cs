@@ -61,7 +61,8 @@ public class CustomTexCreator {
                             if (GUILayout.Button("Remove".Red())) {
                                 CustomColorPresets.CustomColors.Remove(color);
                                 CustomColorPresets.Save();
-                                m_CustomColorPresetBrowser.QueueUpdateItems(CustomColorPresets.CustomColors);
+                                Main.PrimaryTexCreator?.m_CustomColorPresetBrowser?.QueueUpdateItems(CustomColorPresets.CustomColors);
+                                Main.SecondaryTexCreator?.m_CustomColorPresetBrowser?.QueueUpdateItems(CustomColorPresets.CustomColors);
                             }
                         }
                     });
@@ -76,7 +77,8 @@ public class CustomTexCreator {
                                 c.Name = m_ColorName;
                                 CustomColorPresets.CustomColors.Add(c);
                                 CustomColorPresets.Save();
-                                m_CustomColorPresetBrowser?.QueueUpdateItems(CustomColorPresets.CustomColors);
+                                Main.PrimaryTexCreator?.m_CustomColorPresetBrowser?.QueueUpdateItems(CustomColorPresets.CustomColors);
+                                Main.SecondaryTexCreator?.m_CustomColorPresetBrowser?.QueueUpdateItems(CustomColorPresets.CustomColors);
                             }
                         } else {
                             GUILayout.Label("Enter a name to export your current color!".Red(), AutoWidth());
@@ -141,7 +143,8 @@ public class CustomTexCreator {
                     if (GUILayout.Button("Remove".Red())) {
                         CustomTexturePresets.CustomColorTextures.Remove(tex);
                         CustomTexturePresets.Save();
-                        m_CustomColorTexPresetBrowser.QueueUpdateItems(CustomTexturePresets.CustomColorTextures);
+                        Main.PrimaryTexCreator?.m_CustomColorTexPresetBrowser?.QueueUpdateItems(CustomTexturePresets.CustomColorTextures);
+                        Main.SecondaryTexCreator?.m_CustomColorTexPresetBrowser?.QueueUpdateItems(CustomTexturePresets.CustomColorTextures);
                     }
                 }
             });
@@ -156,7 +159,8 @@ public class CustomTexCreator {
                         tex.Name = m_TexName;
                         CustomTexturePresets.CustomColorTextures.Add(tex);
                         CustomTexturePresets.Save();
-                        m_CustomColorTexPresetBrowser?.QueueUpdateItems(CustomTexturePresets.CustomColorTextures);
+                        Main.PrimaryTexCreator?.m_CustomColorTexPresetBrowser?.QueueUpdateItems(CustomTexturePresets.CustomColorTextures);
+                        Main.SecondaryTexCreator?.m_CustomColorTexPresetBrowser?.QueueUpdateItems(CustomTexturePresets.CustomColorTextures);
                     }
                 } else {
                     GUILayout.Label("Enter a name to export your current texture!".Red(), AutoWidth());
@@ -180,9 +184,7 @@ public class CustomTexCreator {
         using (HorizontalScope()) {
             GUILayout.Label("Texture Wrap Mode (What happens at the edges of the texture)", AutoWidth());
             GUILayout.Space(20);
-            if (SelectionGrid(ref m_CurrentTex.wrapMode, 4, null, AutoWidth())) {
-
-            }
+            SelectionGrid(ref m_CurrentTex.wrapMode, 4, null, AutoWidth());
         }
         using (VerticalScope()) {
             for (int i = 0; i < m_Height; i++) {

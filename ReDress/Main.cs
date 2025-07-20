@@ -41,8 +41,8 @@ public static class Main {
     private static bool m_OpenedClothingSection = false;
     private static bool m_OpenedColorSection = false;
     private static bool m_OpenedClothingSets = false;
-    private static CustomTexCreator? m_PrimaryTexCreator;
-    private static CustomTexCreator? m_SecondaryTexCreator;
+    internal static CustomTexCreator? PrimaryTexCreator;
+    internal static CustomTexCreator? SecondaryTexCreator;
     internal static Browser<string> IncludeBrowser = null!;
     private static float? m_IncludeBrowserLabelWidth = null;
 
@@ -407,11 +407,11 @@ public static class Main {
                                         if (texOverrides.Item1 != null) {
                                             GUILayout.Label($"Current Primary Override: {texOverrides.Item1}");
                                         }
-                                        if (m_PrimaryTexCreator?.EEName != eeName) {
-                                            m_PrimaryTexCreator = new(eeName, texOverrides.Item1);
+                                        if (PrimaryTexCreator?.EEName != eeName) {
+                                            PrimaryTexCreator = new(eeName, texOverrides.Item1);
                                         }
-                                        if (m_PrimaryTexCreator.ColorPickerGUI()) {
-                                            texOverrides.Item1 = m_PrimaryTexCreator.GetTexCopy();
+                                        if (PrimaryTexCreator.ColorPickerGUI()) {
+                                            texOverrides.Item1 = PrimaryTexCreator.GetTexCopy();
                                             customTexOverrides[eeName] = texOverrides;
                                             EntityPartStorage.perSave.CustomColorsByName[PickedUnit.UniqueId] = customTexOverrides;
                                             EntityPartStorage.SavePerSaveSettings();
@@ -421,11 +421,11 @@ public static class Main {
                                         if (texOverrides.Item2 != null) {
                                             GUILayout.Label($"Current Secondary Override: {texOverrides.Item2}");
                                         }
-                                        if (m_SecondaryTexCreator?.EEName != eeName) {
-                                            m_SecondaryTexCreator = new(eeName, texOverrides.Item2);
+                                        if (SecondaryTexCreator?.EEName != eeName) {
+                                            SecondaryTexCreator = new(eeName, texOverrides.Item2);
                                         }
-                                        if (m_SecondaryTexCreator.ColorPickerGUI()) {
-                                            texOverrides.Item2 = m_SecondaryTexCreator.GetTexCopy();
+                                        if (SecondaryTexCreator.ColorPickerGUI()) {
+                                            texOverrides.Item2 = SecondaryTexCreator.GetTexCopy();
                                             customTexOverrides[eeName] = texOverrides;
                                             EntityPartStorage.perSave.CustomColorsByName[PickedUnit.UniqueId] = customTexOverrides;
                                             EntityPartStorage.SavePerSaveSettings();

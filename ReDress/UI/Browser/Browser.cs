@@ -151,7 +151,7 @@ public class Browser<T> : VerticalList<T> where T : notnull {
                 PageGUI();
                 Space(30);
                 if (ShowAllFunc != null) {
-                    var newValue = GUILayout.Toggle(ShowAll, SharedStrings.ShowAllText.Cyan(), AutoWidth());
+                    var newValue = !GUILayout.Toggle(!ShowAll, SharedStrings.ShowAllText.Cyan().Bold(), AutoWidth());
                     if (newValue != ShowAll) {
                         ShowAll = newValue;
                         if (UnsearchedShowAllItems == null && newValue && !m_ShowAllFuncCalled) {
