@@ -19,7 +19,7 @@ namespace ReDress;
 [HarmonyPatch]
 public static class Patches {
     private static bool m_IsCurrentlyLoadingGame = false;
-    private static bool m_ForceNoExcludeNewEEs = false;
+    private static bool m_IsInDollRoom;
     private static string? m_CurrentUid;
     private static (EntityPartStorage.CustomColorTex?, EntityPartStorage.CustomColorTex?, EntityPartStorage.CustomColorTex?) m_CustomOverride = (null, null, null);
     private static Dictionary<string, HashSet<EquipmentEntity>> m_CachedLinks = new();
@@ -202,7 +202,7 @@ public static class Patches {
                 if (uniqueId == null) {
                     return true;
                 }
-                if (!m_ForceNoExcludeNewEEs && m_Settings.ShouldExcludeNewEEs) {
+                if (m_IsInDollRoom && m_Settings.ShouldExcludeNewEEs) {
                     EntityPartStorage.perSave.ExcludeByName.TryGetValue(uniqueId, out var tmpExcludes);
                     tmpExcludes ??= [];
 
@@ -337,12 +337,12 @@ public static class Patches {
     private static class CharacterDollRoom_Patch {
         [HarmonyPatch(nameof(CharacterDollRoom.Show)), HarmonyPrefix]
         private static void Show() {
-            m_ForceNoExcludeNewEEs = false;
+            m_IsInDollRoom = true;
         }
 
         [HarmonyPatch(nameof(CharacterDollRoom.Hide)), HarmonyPrefix]
         private static void Hide() {
-            m_ForceNoExcludeNewEEs = true;
+            m_IsInDollRoom = false;
         }
     }
 }
