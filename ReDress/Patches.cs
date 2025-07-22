@@ -324,15 +324,6 @@ public static class Patches {
         }
     }
 
-    [HarmonyPatch(typeof(Traverse), nameof(Traverse.SetValue)), HarmonyFinalizer]
-    private static Exception Traverse_SetValue(Exception __exception, Traverse __instance, ref Traverse __result) {
-        if (__exception is FieldAccessException) {
-            __result = __instance;
-            return null!;
-        }
-        return __exception;
-    }
-
     [HarmonyPatch(typeof(CharacterDollRoom))]
     private static class CharacterDollRoom_Patch {
         [HarmonyPatch(nameof(CharacterDollRoom.Show)), HarmonyPrefix]
