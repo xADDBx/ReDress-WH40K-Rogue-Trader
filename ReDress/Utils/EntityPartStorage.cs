@@ -85,9 +85,7 @@ public static class EntityPartStorage {
             colors = [c];
         }
         public Texture2D MakeTex() {
-            if (HashCode == null) {
-                HashCode = ArrayHasher.ComputeHash(colors, height, width);
-            }
+            HashCode ??= ArrayHasher.ComputeHash(colors, height, width);
             if (!m_TexCache.TryGetValue(HashCode.Value, out var tex)) {
                 tex = new Texture2D(width, height, textureFormat: TextureFormat.RGBA32, 1, false) { filterMode = FilterMode.Bilinear };
                 var pix = new Color[width * height];
