@@ -114,7 +114,7 @@ public class VerticalList<T> : IPagedList where T : notnull {
         PagedItems = Items.Skip(offset).Take(PagedItemsCount);
         if (ReferenceEquals(this, Main.IncludeBrowser)) {
             void UpdateWidths() {
-                TrackedWidth = CalculateLargestLabelSize(PagedItems.Select(i => Main.m_Settings.AssetMapping[(i as string)!]));
+                TrackedWidth = CalculateLargestLabelSize(PagedItems.Select(i => Main.m_Settings.AssetMapping![(i as string)!]));
                 TrackedWidth2 = CalculateLargestLabelSize(PagedItems.Select(i => (i as string)!), GUI.skin.textArea);
             }
             if (GUIUtility.guiDepth > 0) {
