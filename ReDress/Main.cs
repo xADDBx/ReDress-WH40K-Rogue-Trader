@@ -51,8 +51,8 @@ public static class Main {
         Mod = modEntry;
         modEntry.OnGUI = OnGUI;
         modEntry.OnUpdate = OnUpdate;
-        IncludeBrowser = new(s => $"{m_Settings.AssetMapping[s]} {s}", s => $"{m_Settings.AssetMapping[s]} {s}", null, (Action<IEnumerable<string>> a) => {
-            a(m_Settings.AssetMapping.Keys);
+        IncludeBrowser = new(s => $"{m_Settings.AssetMapping![s]} {s}", s => $"{m_Settings.AssetMapping![s]} {s}", null, (Action<IEnumerable<string>> a) => {
+            a(m_Settings.AssetMapping!.Keys);
         }, false, (int)(EffectiveWindowWidth() * 0.95f));
         ScheduleForGuiThread(IncludeBrowser.ForceShowAll);
         HarmonyInstance = new Harmony(modEntry.Info.Id);
@@ -173,6 +173,9 @@ public static class Main {
                 } else {
                     GUILayout.Label("Load a save first!", AutoWidth());
                 }
+                if (GUILayout.Button("Force Refresh EE Cache", AutoWidth())) {
+                    Cache.RebuildCache();
+                }
             } catch (Exception ex) {
                 Log.Log(ex.ToString());
                 PickedUnit = null;
@@ -290,7 +293,7 @@ public static class Main {
                                 IncludeBrowser.OnGUI(guid => {
                                     using (HorizontalScope()) {
                                         if (currentIncludes?.Contains(guid) ?? false) {
-                                            GUILayout.Label($"{m_Settings.AssetMapping[guid]}".Cyan(), Width(IncludeBrowser.TrackedWidth!.Value));
+                                            GUILayout.Label($"{m_Settings.AssetMapping![guid]}".Cyan(), Width(IncludeBrowser.TrackedWidth!.Value));
                                             GUILayout.Space(20);
                                             if (GUILayout.Button("Remove", GUILayout.Width(m_IncludeBrowserLabelWidth.Value))) {
                                                 currentIncludes.Remove(guid);
@@ -301,7 +304,7 @@ public static class Main {
                                             GUILayout.Space(20);
                                             GUILayout.TextArea($"{guid}", Width(IncludeBrowser.TrackedWidth2!.Value));
                                         } else {
-                                            GUILayout.Label($"{m_Settings.AssetMapping[guid]}".Green(), Width(IncludeBrowser.TrackedWidth!.Value));
+                                            GUILayout.Label($"{m_Settings.AssetMapping![guid]}".Green(), Width(IncludeBrowser.TrackedWidth!.Value));
                                             GUILayout.Space(20);
                                             if (GUILayout.Button("Include", GUILayout.Width(m_IncludeBrowserLabelWidth.Value))) {
                                                 currentIncludes ??= [];
