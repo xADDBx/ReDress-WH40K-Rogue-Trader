@@ -129,7 +129,7 @@ public static class EntityPartStorage {
         [Obsolete]
         [JsonProperty]
         public Dictionary<string, Dictionary<string, (CustomColor, CustomColor)>>? CustomColorByName = new();
-        // The first two are Primary and Secondary overrides. The third one is a placeholder fo rmain tex. What are the other 3 for?
+        // The first two are Primary and Secondary overrides. The third one is a placeholder for main tex. What are the other 3 for?
         [JsonProperty]
         public Dictionary<string, Dictionary<string, (CustomColorTex?, CustomColorTex?, CustomColorTex?, CustomColorTex?, CustomColorTex?, CustomColorTex?)>> CustomColorsByName = new();
         [JsonProperty]
