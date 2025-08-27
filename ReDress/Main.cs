@@ -244,6 +244,11 @@ public static class Main {
                                 EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmpExcludes);
                                 tmpExcludes ??= [];
                                 foreach (var ee in PickedUnit!.View.CharacterAvatar.EquipmentEntities.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
+                                    if (ee == null) {
+                                        Log.Log($"Warning: Iterating over EEs of unit {PickedUnit.CharacterName} encountered disposed Unity Object");
+                                        GUILayout.Label($"Error! EE is disposed.".Orange());
+                                        continue;
+                                    }
                                     if (tmpExcludes.Contains(ee.name)) {
                                         continue;
                                     }
@@ -337,7 +342,7 @@ public static class Main {
                 rampOverrides ??= new();
                 customTexOverrides ??= new();
                 using (VerticalScope()) {
-                    var entries = PickedUnit.View.CharacterAvatar.EquipmentEntities.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()));
+                    var entries = PickedUnit.View.CharacterAvatar.EquipmentEntities.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset())).Where(ee => ee != null);
                     var width = CalculateLargestLabelSize(entries.Select(ee => (ee.name.IsNullOrEmpty() ? ee.ToString() : ee.name) + ":"));
                     foreach (var entry in entries) {
                         var ee = entry;
