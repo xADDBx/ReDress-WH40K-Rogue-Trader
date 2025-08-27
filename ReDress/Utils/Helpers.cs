@@ -72,7 +72,7 @@ public static class Helpers {
     internal static ConditionalWeakTable<Character, string> UIdCache = new();
     public static string? GetUIdFromCharacter(Character c) {
         if (c.IsInDollRoom) {
-            c = UIDollRooms.Instance.CharacterDollRoom.m_OriginalAvatar ?? c;
+            c = UIDollRooms.Instance?.CharacterDollRoom?.m_OriginalAvatar ?? c;
         }
         if (UIdCache.TryGetValue(c, out var uId)) {
             return uId;
