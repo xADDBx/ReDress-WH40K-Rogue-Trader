@@ -33,6 +33,7 @@ internal class Cache : AbstractSettings {
         private set;
     }
     public HashSet<(string, string)> OmmSet = [];
+    [Obsolete]
     public bool ShouldExcludeNewEEs = false;
     protected override string Name => "Settings.json";
     private static readonly Lazy<Cache> _instance = new Lazy<Cache>(() => {

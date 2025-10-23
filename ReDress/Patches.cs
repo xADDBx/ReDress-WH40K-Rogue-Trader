@@ -2,16 +2,20 @@
 using Kingmaker;
 using Kingmaker.Blueprints;
 using Kingmaker.Blueprints.Area;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Persistence;
+using Kingmaker.Items.Slots;
 using Kingmaker.ResourceLinks;
 using Kingmaker.UI.DollRoom;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Parts;
 using Kingmaker.View;
+using Kingmaker.View.Equipment;
 using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.CharacterSystem;
 using RogueTrader.Code.ShaderConsts;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using static ReDress.Main;
 
@@ -19,7 +23,6 @@ namespace ReDress;
 [HarmonyPatch]
 public static class Patches {
     private static bool m_IsCurrentlyLoadingGame = false;
-    private static bool m_IsInDollRoom;
     private static string? m_CurrentUid;
     private static (EntityPartStorage.CustomColorTex?, EntityPartStorage.CustomColorTex?, EntityPartStorage.CustomColorTex?) m_CustomOverride = (null, null, null);
     private static Dictionary<string, HashSet<EquipmentEntity>> m_CachedLinks = new();
@@ -74,6 +77,7 @@ public static class Patches {
                     foreach (var ee in charac.EquipmentEntities.ToArray()) {
                         if (excludeIds.Contains(ee.name)) {
                             charac.EquipmentEntities.Remove(ee);
+                            charac.EquippedItemsEntities.Remove(ee);
                         }
                     }
                     foreach (var eel in charac.SavedEquipmentEntities.ToArray()) {
@@ -195,23 +199,12 @@ public static class Patches {
 
     [HarmonyPatch(typeof(Character))]
     private static class Character_Patch {
-        [HarmonyPatch(nameof(Character.AddEquipmentEntity), [typeof(EquipmentEntity), typeof(bool)]), HarmonyPrefix]
+        [HarmonyPatch(nameof(Character.AddEquipmentEntity), [typeof(EquipmentEntity), typeof(bool), typeof(bool), typeof(ItemSlot)]), HarmonyPrefix]
         private static bool AddEquipmentEntity(Character __instance, EquipmentEntity ee) {
             try {
                 var uniqueId = Helpers.GetUIdFromCharacter(__instance);
                 if (uniqueId == null) {
                     return true;
-                }
-                if (m_IsInDollRoom && m_Settings.ShouldExcludeNewEEs) {
-                    EntityPartStorage.perSave.ExcludeByName.TryGetValue(uniqueId, out var tmpExcludes);
-                    tmpExcludes ??= [];
-
-                    m_CachedLinks.TryGetValue(uniqueId, out var defaultClothes);
-                    if (!(defaultClothes?.Contains(ee) ?? false)) {
-                        tmpExcludes.Add(ee.name);
-                        EntityPartStorage.perSave.ExcludeByName[uniqueId] = tmpExcludes;
-                        EntityPartStorage.SavePerSaveSettings(false);
-                    }
                 }
                 EntityPartStorage.perSave.AddClothes.TryGetValue(uniqueId, out var ids);
                 EntityPartStorage.perSave.NakedFlag.TryGetValue(uniqueId, out var nakedFlag);
@@ -323,17 +316,52 @@ public static class Patches {
             }
         }
     }
-
-    [HarmonyPatch(typeof(CharacterDollRoom))]
-    private static class CharacterDollRoom_Patch {
-        [HarmonyPatch(nameof(CharacterDollRoom.Show)), HarmonyPrefix]
-        private static void Show() {
-            m_IsInDollRoom = true;
+    [HarmonyPatch(typeof(CharacterDollRoom), nameof(CharacterDollRoom.SetupUnit)), HarmonyTranspiler]
+    private static IEnumerable<CodeInstruction> CharacterDollRoom_SetupUnit_Transpiler(IEnumerable<CodeInstruction> instructions) {
+        bool first = true;
+        var field = AccessTools.Field(typeof(CharacterDollRoom), nameof(CharacterDollRoom.m_Unit));
+        foreach (var inst in instructions) {
+            if (first && inst.LoadsField(field)) {
+                first = false;
+                yield return CodeInstruction.Call((CharacterDollRoom inst) => MaybeDollUnit(inst));
+            } else {
+                yield return inst;
+            }
         }
-
-        [HarmonyPatch(nameof(CharacterDollRoom.Hide)), HarmonyPrefix]
-        private static void Hide() {
-            m_IsInDollRoom = false;
+    }
+    private static BaseUnitEntity? MaybeDollUnit(CharacterDollRoom room) {
+        if (EntityPartStorage.CharacterDollRoomNormalUnitHandling) {
+            return room.m_Unit;
+        } else {
+            return null;
+        }
+    }
+    [HarmonyPatch]
+    private static class HandsEquipmentPatches {
+        private static ConditionalWeakTable<UnitEntityView, UnitViewHandsEquipment> m_HaveToDispose = new();
+        [HarmonyPatch(typeof(UnitViewHandsEquipment), MethodType.Constructor, [typeof(UnitEntityView), typeof(Character)]), HarmonyPostfix]
+        private static void Ctor(UnitViewHandsEquipment __instance) {
+            if (m_HaveToDispose.TryGetValue(__instance.View, out var equip)) {
+                m_HaveToDispose.Remove(__instance.View);
+                try {
+                    equip.Dispose();
+                } catch (Exception ex) {
+                    Log.Log(ex.ToString());
+                }
+            }
+            m_HaveToDispose.Add(__instance.View, __instance);
+        }
+        [HarmonyPatch(typeof(UnitEntityView), nameof(UnitEntityView.OnWillDetachFromData)), HarmonyPrefix]
+        private static void Dispose(UnitEntityView __instance) {
+            if (m_HaveToDispose.TryGetValue(__instance, out var equip)) {
+                if (__instance.Data.View.HandsEquipment != equip) {
+                    try {
+                        equip.Dispose();
+                    } catch (Exception ex) {
+                        Log.Log(ex.ToString());
+                    }
+                }
+            }
         }
     }
 }

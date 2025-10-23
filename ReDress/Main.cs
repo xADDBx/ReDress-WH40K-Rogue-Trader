@@ -165,11 +165,6 @@ public static class Main {
                     } else {
                         GUILayout.Label("Please pick a unit to modify first!".Green(), AutoWidth());
                     }
-                    var newVal = GUILayout.Toggle(m_Settings.ShouldExcludeNewEEs, "Automatically exclude new items on all characters");
-                    if (newVal != m_Settings.ShouldExcludeNewEEs) {
-                        m_Settings.ShouldExcludeNewEEs = newVal;
-                        m_Settings.Save();
-                    }
                 } else {
                     GUILayout.Label("Load a save first!", AutoWidth());
                 }

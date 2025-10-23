@@ -164,6 +164,7 @@ public static class EntityPartStorage {
 #pragma warning restore CS0612 // Type or member is obsolete
         }
     }
+    public static bool CharacterDollRoomNormalUnitHandling = true;
     public static void SavePerSaveSettings(bool reloadCharacterClothing = true) {
         if (Game.Instance?.Player == null) return;
         if (m_CachedPerSave == null) ReloadPerSaveSettings();
@@ -175,8 +176,9 @@ public static class EntityPartStorage {
                 Helpers.DoForEachValidUnit(UpdateUnit);
                 var u = UIDollRooms.Instance?.CharacterDollRoom?.Unit;
                 if (u != null) {
-                    UIDollRooms.Instance!.CharacterDollRoom.m_Unit = null;
-                    UIDollRooms.Instance.CharacterDollRoom.SetupUnit(u);
+                    CharacterDollRoomNormalUnitHandling = false;
+                    UIDollRooms.Instance!.CharacterDollRoom.SetupUnit(u);
+                    CharacterDollRoomNormalUnitHandling = true;
                 }
             }
         } catch (Exception ex) {
@@ -204,6 +206,13 @@ public static class EntityPartStorage {
         var polymorphBuff = ResourcesLibrary.BlueprintsCache.Load("b5fe711b0755440093599873b4b4caf6") as BlueprintBuff;
         unit.Buffs.Add(polymorphBuff);
         unit.Buffs.Remove(polymorphBuff);
+        /* Neat:
+        var oldView = unit.View;
+        var newView = unit.CreateViewForData();
+        unit.AttachView(newView);
+        oldView.OnDisable();
+        oldView.DestroyViewObject();
+        */
         EventBus.RaiseEvent(unit, (IUnitVisualChangeHandler h) => {
             h.HandleUnitChangeEquipmentColor(-1, false);
         }, true);
