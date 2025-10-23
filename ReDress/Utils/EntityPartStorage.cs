@@ -203,9 +203,11 @@ public static class EntityPartStorage {
         UnityEngine.Object.Destroy(oldView);
         */
 
+        
         var polymorphBuff = ResourcesLibrary.BlueprintsCache.Load("b5fe711b0755440093599873b4b4caf6") as BlueprintBuff;
         unit.Buffs.Add(polymorphBuff);
         unit.Buffs.Remove(polymorphBuff);
+        
         /* Neat:
         var oldView = unit.View;
         var newView = unit.CreateViewForData();

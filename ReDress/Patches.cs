@@ -344,7 +344,7 @@ public static class Patches {
             if (m_HaveToDispose.TryGetValue(__instance.View, out var equip)) {
                 m_HaveToDispose.Remove(__instance.View);
                 try {
-                    equip.Dispose();
+                    DisposeAtHome(equip);
                 } catch (Exception ex) {
                     Log.Log(ex.ToString());
                 }
@@ -356,12 +356,20 @@ public static class Patches {
             if (m_HaveToDispose.TryGetValue(__instance, out var equip)) {
                 if (__instance.Data.View.HandsEquipment != equip) {
                     try {
-                        equip.Dispose();
+                        DisposeAtHome(equip);
                     } catch (Exception ex) {
                         Log.Log(ex.ToString());
                     }
                 }
             }
+        }
+        private static void DisposeAtHome(UnitViewHandsEquipment equip) {
+            equip.Owner.UISettings.UnsubscribeFromBackpackVisibilityChange(new Action(equip.UpdateBackpackVisibility));
+            equip.Owner.UISettings.UnsubscribeFromHelmetVisibilityChange(new Action(equip.UpdateHelmetVisibility));
+            equip.Owner.UISettings.UnsubscribeFromHelmetVisibilityAboveAllChange(new Action(equip.UpdateHelmetVisibilityAboveAll));
+            equip.Owner.UISettings.UnsubscribeFromGlovesVisibilityChange(new Action(equip.UpdateGlovesVisibility));
+            equip.Owner.UISettings.UnsubscribeFromBootsVisibilityChange(new Action(equip.UpdateBootsVisibility));
+            equip.Owner.UISettings.UnsubscribeFromArmorVisibilityChange(new Action(equip.UpdateArmorVisibility));
         }
     }
 }
