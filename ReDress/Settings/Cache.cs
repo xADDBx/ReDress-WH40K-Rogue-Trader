@@ -46,6 +46,7 @@ internal class Cache : AbstractSettings {
     public static bool? NeedsCacheRebuilt {
         get {
             if (CacheInstance.AssetMapping!.Count < 1) {
+                Main.Log.Log($"ReDress Cache empty!");
                 m_BaseGameRebuild = true;
                 return true;
             }
@@ -74,6 +75,7 @@ internal class Cache : AbstractSettings {
     }
     private static bool m_IsRebuilding = false;
     internal static void RebuildCache() {
+        Main.Log.Log($"Rebuilding ReDress Cache...");
         m_IsRebuilding = true;
         if (m_BaseGameRebuild) {
             CacheInstance.BaseGameEEs.Clear();
@@ -85,10 +87,20 @@ internal class Cache : AbstractSettings {
             }
         }
         CacheInstance.ModdedEEs.Clear();
-        foreach (var guid in OwlcatModificationsManager.Instance.AppliedModifications.SelectMany(mod => mod.Settings.BundlesLayout.Guids)) {
-            var obj = ResourcesLibrary.TryGetResource<UnityEngine.Object>(guid, true, false);
-            if (obj is EquipmentEntity ee) {
-                CacheInstance.ModdedEEs[guid] = ee.name;
+        foreach (var mod in OwlcatModificationsManager.Instance.AppliedModifications) {
+            try {
+                var mapping = mod.Settings.BundlesLayout.GuidToBundle.GroupBy(p => p.Value).ToDictionary(g => g.Key, g => g.Select(pp => pp.Key).ToList());
+                foreach (var item in mapping) {
+                    var bundle = BundlesLoadService.Instance.RequestBundle(item.Key);
+                    foreach (var assetGuid in item.Value) {
+                        var obj = bundle.LoadAsset(assetGuid);
+                        if (obj is EquipmentEntity ee) {
+                            CacheInstance.ModdedEEs[assetGuid] = ee.name;
+                        }
+                    }
+                }
+            } catch (Exception ex) { 
+                Main.Log.Log($"Encountered exception while caching Assets from Owlmod: {mod.UniqueName}\n{ex}");
             }
         }
         ResourcesLibrary.CleanupLoadedCache(ResourcesLibrary.CleanupMode.UnloadNonRequested);
