@@ -228,10 +228,11 @@ public static class Patches {
         [HarmonyPatch(nameof(Character.ColorizeOutfitPart)), HarmonyTranspiler]
         private static IEnumerable<CodeInstruction> ColorizeOutfitPart(IEnumerable<CodeInstruction> instructions) {
             var method = AccessTools.PropertySetter(typeof(Renderer), nameof(Renderer.sharedMaterials));
-            foreach (var inst in instructions) {
-                yield return inst;
-                if (inst.Calls(method)) {
-                    yield return new(OpCodes.Ldloc_3);
+            var insts = instructions.ToArray();
+            for (var i = 0; i < insts.Length; i++) {
+                yield return insts[i];
+                if (insts[i].Calls(method)) {
+                    yield return insts[i - 1];
                     yield return new(OpCodes.Ldarg_0);
                     yield return new(OpCodes.Ldarg_2);
                     yield return CodeInstruction.Call((List<Material> mats, Character c, EquipmentEntity ee) => Helpers.ColourOutfitPart(mats, c, ee));
@@ -336,10 +337,12 @@ public static class Patches {
             return null;
         }
     }
+    // https://discord.com/channels/645948717400064030/791053285657542666/1430722763643158679
+    // https://discord.com/channels/645948717400064030/791053285657542666/1430714113310330980
     [HarmonyPatch]
     private static class HandsEquipmentPatches {
         private static ConditionalWeakTable<UnitEntityView, UnitViewHandsEquipment> m_HaveToDispose = new();
-        [HarmonyPatch(typeof(UnitViewHandsEquipment), MethodType.Constructor, [typeof(UnitEntityView), typeof(Character)]), HarmonyPostfix]
+        [HarmonyPatch(typeof(UnitViewHandsEquipment), MethodType.Constructor, [typeof(UnitEntityView), typeof(Character), typeof(bool), typeof(bool)]), HarmonyPostfix]
         private static void Ctor(UnitViewHandsEquipment __instance) {
             if (m_HaveToDispose.TryGetValue(__instance.View, out var equip)) {
                 m_HaveToDispose.Remove(__instance.View);

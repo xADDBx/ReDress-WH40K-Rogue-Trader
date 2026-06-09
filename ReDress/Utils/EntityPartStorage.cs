@@ -1,12 +1,16 @@
 ﻿using Kingmaker;
 using Kingmaker.Blueprints;
+using Kingmaker.Designers.EventConditionActionSystem.Evaluators;
+using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
 using Kingmaker.PubSubSystem.Core;
+using Kingmaker.ResourceLinks;
 using Kingmaker.UI.Common;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
+using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.Visual.CharacterSystem;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -134,6 +138,8 @@ public static class EntityPartStorage {
         public Dictionary<string, Dictionary<string, (CustomColorTex?, CustomColorTex?, CustomColorTex?, CustomColorTex?, CustomColorTex?, CustomColorTex?)>> CustomColorsByName = new();
         [JsonProperty]
         public Dictionary<string, bool> NakedFlag = new();
+        [JsonProperty]
+        public HashSet<string> UnbakedChars = [];
     }
     private static PerSaveSettings? m_CachedPerSave = null;
     public static void ClearCachedPerSave() => m_CachedPerSave = null;
@@ -185,7 +191,43 @@ public static class EntityPartStorage {
             Main.Log.Log(ex.ToString());
         }
     }
-    private static void UpdateUnit(AbstractUnitEntity unit) {
+    public static void Unbake(BaseUnitEntity unit) {
+        var oldView = unit.View;
+        var currentEEs = unit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => l.Load());
+
+        if (!perSave.IncludeByName.TryGetValue(unit.UniqueId, out var includes)) {
+            includes = [];
+        }
+        includes.AddRange(unit.View.CharacterAvatar.SavedEquipmentEntities.Select(ee => ee.AssetId));
+        perSave.IncludeByName[unit.UniqueId] = includes;
+
+
+        unit.DetachView();
+
+        unit.ViewSettings.m_CustomPrefabGuid = "4e901c9c06a71c045804730a9e934106";
+        var newView = unit.CreateView();
+        unit.AttachView(newView);
+        var prefabEEs = unit.View.CharacterAvatar.EquipmentEntities?.Union(unit.View.CharacterAvatar.SavedEquipmentEntities?.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()).NotNull() ?? []) ?? [];
+
+        var toExclude = prefabEEs.Except(currentEEs);
+        if (!perSave.ExcludeByName.TryGetValue(unit.UniqueId, out var excludes)) {
+            excludes = [];
+        }
+        excludes.AddRange(toExclude.Select(ee => ee.name));
+        perSave.ExcludeByName[unit.UniqueId] = excludes;
+        Main.IncludeBrowser.QueueUpdateItems(includes);
+        perSave.UnbakedChars.Add(unit.UniqueId);
+        oldView.DestroyViewObject();
+        SavePerSaveSettings();
+    }
+#warning Test
+    public static void Rebake(BaseUnitEntity unit) {
+        unit.ViewSettings.m_CustomPrefabGuid = "";
+        perSave.UnbakedChars.Remove(unit.UniqueId);
+        SavePerSaveSettings();
+        UpdateUnit(unit);
+    }
+    private static void UpdateUnit(BaseUnitEntity unit) {
         /*
         var oldView = unit.View;
         var newView = unit.ViewSettings.Instantiate(true);
@@ -203,11 +245,10 @@ public static class EntityPartStorage {
         UnityEngine.Object.Destroy(oldView);
         */
 
-        
         var polymorphBuff = ResourcesLibrary.BlueprintsCache.Load("b5fe711b0755440093599873b4b4caf6") as BlueprintBuff;
         unit.Buffs.Add(polymorphBuff);
         unit.Buffs.Remove(polymorphBuff);
-        
+
         /* Neat:
         var oldView = unit.View;
         var newView = unit.CreateViewForData();

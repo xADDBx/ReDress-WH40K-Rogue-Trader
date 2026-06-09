@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using static ReDress.UIHelpers;
+using static UnityModManagerNet.UnityModManager;
 
 namespace ReDress;
 
@@ -127,25 +128,25 @@ public class VerticalList<T> : IPagedList where T : notnull {
     protected void PageGUI() {
         Label($"{SharedStrings.ShowingText.Orange()} {PagedItemsCount.ToString().Cyan()} / {ItemCount.ToString().Cyan()} {SharedStrings.ResultsText.Orange()},   " +
             $"{SharedStrings.PageText.Orange()}: {CurrentPage.ToString().Cyan()} / {Math.Max(1, TotalPages).ToString().Cyan()}");
-        if (TotalPages > 1) {
-            Space(25);
-            if (Button("-")) {
-                if (CurrentPage <= 1) {
-                    CurrentPage = TotalPages;
-                } else {
-                    CurrentPage -= 1;
-                }
-                UpdatePagedItems();
+        GUI.enabled = TotalPages > 1;
+        Space(25);
+        if (Button("-")) {
+            if (CurrentPage <= 1) {
+                CurrentPage = TotalPages;
+            } else {
+                CurrentPage -= 1;
             }
-            if (Button("+")) {
-                if (CurrentPage >= TotalPages) {
-                    CurrentPage = 1;
-                } else {
-                    CurrentPage += 1;
-                }
-                UpdatePagedItems();
-            }
+            UpdatePagedItems();
         }
+        if (Button("+")) {
+            if (CurrentPage >= TotalPages) {
+                CurrentPage = 1;
+            } else {
+                CurrentPage += 1;
+            }
+            UpdatePagedItems();
+        }
+        GUI.enabled = true;
     }
     protected virtual void HeaderGUI() {
         using (HorizontalScope()) {

@@ -4,6 +4,7 @@ using HarmonyLib;
 using Kingmaker;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.PubSubSystem.Core;
 using Kingmaker.ResourceLinks;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.Visual.CharacterSystem;
@@ -130,29 +131,47 @@ public static class Main {
                                     GUILayout.Label("The Custom Color Pickers allow creating custom textures for the primary and secondary ramp.".Green(), AutoWidth());
                                 }
                             }
+                            GUILayout.Label("Baking".Orange(), AutoWidth());
+                            using (HorizontalScope()) {
+                                Space(20);
+                                using (VerticalScope()) {
+                                    GUILayout.Label("To optimize a bit, the game \"bakes\" the views of most non-playable characters in the game (including playable characters on the deck".Green(), AutoWidth());
+                                    GUILayout.Label("This prevents any modifications you do to them from appearing.".Green(), AutoWidth());
+                                    GUILayout.Label("ReDress allows \"Unbaking\", and it works by replacing the baked view with one from another character that is not baked.".Green(), AutoWidth());
+                                    GUILayout.Label("It automatically adds all EEs that should be on the view to Includes and all EEs that are on the replacement view to Excludes; but the unbaked character might be missing some clothing you need to manually add!".Green(), AutoWidth());
+                                }
+                            }
                         }
                     }
                 }
                 DrawDiv();
-                var units = Game.Instance?.Player?.PartyCharacters?.Select(u => u.Get() as BaseUnitEntity).NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList() ?? [];
-                if (units.Count > 0) {
-                    GUILayout.Label("Pick the character you want to modify:");
-                    Space(5);
-                    int selectedIndex = PickedUnit != null ? units.IndexOf(PickedUnit) : 0;
-                    if (selectedIndex < 0) {
-                        selectedIndex = 0;
-                        PickedUnit = null;
-                    }
-                    int newIndex = GUILayout.SelectionGrid(selectedIndex, units.Select(m => m!.CharacterName).ToArray(), 6);
-                    if (selectedIndex != newIndex || PickedUnit == null) {
-                        PickedUnit = units[newIndex];
-                        EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmp);
-                        IncludeBrowser.QueueUpdateItems(tmp ?? []);
-                        m_SelectedOutfit = Outfit.Current;
-                    }
-                    DrawDiv();
+                CharacterPicker.OnFilterPickerGUI(null, GUILayout.Width(0.98f * UnityModManager.Params.WindowWidth));
+                DrawDiv();
+                bool changed = CharacterPicker.OnCharacterPickerGUI(null, GUILayout.Width(0.98f * UnityModManager.Params.WindowWidth));
+                GUILayout.Label("Pick the character you want to modify:");
+                Space(5);
+                if (changed) {
+                    PickedUnit = CharacterPicker.CurrentUnit;
+                    EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmp);
+                    IncludeBrowser.QueueUpdateItems(tmp ?? []);
+                    m_SelectedOutfit = Outfit.Current;
+                }
+                if (PickedUnit != CharacterPicker.CurrentUnit) {
+                    PickedUnit = null;
+                }
+                DrawDiv();
 
-                    if (PickedUnit != null) {
+                if (PickedUnit != null) {
+                    if (PickedUnit.View?.CharacterAvatar?.BakedCharacter) {
+                        if (GUILayout.Button("Unbake", AutoWidth())) {
+                            EntityPartStorage.Unbake(PickedUnit);
+                        }
+                    } else {
+                        if (EntityPartStorage.perSave.UnbakedChars.Contains(PickedUnit.UniqueId)) {
+                            if (GUILayout.Button("Rebake (turn the appearance back to the default one)", AutoWidth())) {
+                                EntityPartStorage.Rebake(PickedUnit);
+                            }
+                        }
                         if (GUILayout.Button("Open the Character Creation window for this character", AutoWidth())) {
                             Helpers.OpenAppeareanceChanger(PickedUnit);
                         }
@@ -161,12 +180,9 @@ public static class Main {
                         ClothingGUI();
 
                         ColorGUI();
-
-                    } else {
-                        GUILayout.Label("Please pick a unit to modify first!".Green(), AutoWidth());
                     }
                 } else {
-                    GUILayout.Label("Load a save first!", AutoWidth());
+                    GUILayout.Label("Please pick a unit to modify first!".Green(), AutoWidth());
                 }
                 if (GUILayout.Button("Force Refresh EE Cache", AutoWidth())) {
                     Cache.RebuildCache();
@@ -238,7 +254,7 @@ public static class Main {
                                 }
                                 EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmpExcludes);
                                 tmpExcludes ??= [];
-                                foreach (var ee in PickedUnit!.View.CharacterAvatar.EquipmentEntities.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()))) {
+                                foreach (var ee in PickedUnit!.View.CharacterAvatar.EquipmentEntities?.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities?.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()) ?? []) ?? []) {
                                     if (ee == null) {
                                         Log.Log($"Warning: Iterating over EEs of unit {PickedUnit.CharacterName} encountered disposed Unity Object");
                                         GUILayout.Label($"Error! EE is disposed.".Orange());

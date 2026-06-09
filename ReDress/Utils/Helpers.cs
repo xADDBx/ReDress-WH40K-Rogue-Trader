@@ -90,7 +90,7 @@ public static class Helpers {
     public static string? GetUIdFromUnit(AbstractUnitEntity? unit, bool onlyWhenMatchingPickedUnit = true) {
         return IsSave(unit) ? unit!.UniqueId : null;
     }
-    public static void DoForEachValidUnit(Action<AbstractUnitEntity> applyToUnit) {
+    public static void DoForEachValidUnit(Action<BaseUnitEntity> applyToUnit) {
         if (IsSave(Main.PickedUnit)) {
             applyToUnit(Main.PickedUnit!);
         }
