@@ -220,7 +220,6 @@ public static class EntityPartStorage {
         oldView.DestroyViewObject();
         SavePerSaveSettings();
     }
-#warning Test
     public static void Rebake(BaseUnitEntity unit) {
         unit.ViewSettings.m_CustomPrefabGuid = "";
         perSave.UnbakedChars.Remove(unit.UniqueId);
