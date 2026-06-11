@@ -174,11 +174,11 @@ public static class Helpers {
             }
         }
     }
-    public static void ColourOutfitPart(List<Material> mats, Character c, EquipmentEntity ee) {
+    public static void ColourOutfitPart(Material[] mats, Character c, EquipmentEntity ee) {
         Patches.IsOutfitColoured = true;
         ColourOutfitPartInternal(mats, c, ee);
     }
-    private static void ColourOutfitPartInternal(List<Material> mats, Character c, EquipmentEntity ee) {
+    private static void ColourOutfitPartInternal(Material[] mats, Character c, EquipmentEntity ee) {
         var uid = GetUIdFromCharacter(c);
         if (uid == null) {
             Main.Log.Log(new System.Diagnostics.StackTrace().ToString());

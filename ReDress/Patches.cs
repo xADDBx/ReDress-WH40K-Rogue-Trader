@@ -235,7 +235,7 @@ public static class Patches {
                     yield return insts[i - 1];
                     yield return new(OpCodes.Ldarg_0);
                     yield return new(OpCodes.Ldarg_2);
-                    yield return CodeInstruction.Call((List<Material> mats, Character c, EquipmentEntity ee) => Helpers.ColourOutfitPart(mats, c, ee));
+                    yield return CodeInstruction.Call((Material[] mats, Character c, EquipmentEntity ee) => Helpers.ColourOutfitPart(mats, c, ee));
                 }
             }
         }
