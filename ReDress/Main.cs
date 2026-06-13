@@ -42,6 +42,7 @@ public static class Main {
     private static bool m_OpenedClothingSection = false;
     private static bool m_OpenedColorSection = false;
     private static bool m_OpenedClothingSets = false;
+    private static bool m_OpenedBodyPartSection = false;
     internal static CustomTexCreator? PrimaryTexCreator;
     internal static CustomTexCreator? SecondaryTexCreator;
     internal static Browser<string> IncludeBrowser = null!;
@@ -131,6 +132,15 @@ public static class Main {
                                     GUILayout.Label("The Custom Color Pickers allow creating custom textures for the primary and secondary ramp.".Green(), AutoWidth());
                                 }
                             }
+                            GUILayout.Label("BodyPart Section".Orange(), AutoWidth());
+                            using (HorizontalScope()) {
+                                Space(20);
+                                using (VerticalScope()) {
+                                    GUILayout.Label("This section shows a list of EEs on the current unit and allows excluding parts of them.".Green(), AutoWidth());
+                                    GUILayout.Label("EEs are often built from multiple body parts (e.g. Skirt, Belt, Upper Legs and Lower Legs).".Green(), AutoWidth());
+                                    GUILayout.Label("Excluding specific body parts will therefore allow using only parts of an outfit.".Green(), AutoWidth());
+                                }
+                            }
                             GUILayout.Label("Baking".Orange(), AutoWidth());
                             using (HorizontalScope()) {
                                 Space(20);
@@ -180,6 +190,8 @@ public static class Main {
                         ClothingGUI();
 
                         ColorGUI();
+
+                        BodyPartGUI();
                     }
                 } else {
                     GUILayout.Label("Please pick a unit to modify first!".Green(), AutoWidth());
@@ -477,6 +489,74 @@ public static class Main {
 
         DrawDiv();
     }
+
+    private static void BodyPartGUI() {
+        DisclosureToggle(ref m_OpenedBodyPartSection, "Show BodyPart Section", AutoWidth());
+
+        if (m_OpenedBodyPartSection) {
+            using (HorizontalScope()) {
+                GUILayout.Space(25);
+
+                EntityPartStorage.perSave.ExcludeBodyPartByName.TryGetValue(PickedUnit!.UniqueId, out var bodyPartExclusions);
+                bodyPartExclusions ??= [];
+
+                using (VerticalScope()) {
+                    var entries = PickedUnit.View.CharacterAvatar.EquipmentEntities.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset())).Where(ee => ee != null);
+                    var width = CalculateLargestLabelSize(entries.Select(ee => (ee.name.IsNullOrEmpty() ? ee.ToString() : ee.name) + ":"));
+
+                    foreach (var entry in entries) {
+                        var ee = entry;
+                        var eeName = ee.name.IsNullOrEmpty() ? ee.ToString() : ee.name;
+
+                        bodyPartExclusions.TryGetValue(eeName, out var excludedParts);
+                        excludedParts ??= [];
+
+                        using (HorizontalScope()) {
+                            GUILayout.Label($"{eeName}:", Width(width));
+                            Space(10);
+
+                            using (VerticalScope()) {
+                                if (ee.BodyParts == null || ee.BodyParts.Count == 0) {
+                                    using (HorizontalScope()) {
+                                        Space(5);
+                                        GUILayout.Label("No BodyParts");
+                                    }
+                                } else {
+                                    foreach (var part in ee.BodyParts) {
+                                        var partName = part.GetBodyPartMapping()!;
+                                        if (string.IsNullOrEmpty(partName)) {
+                                            continue;
+                                        }
+
+                                        bool isExcluded = excludedParts.Contains(partName);
+                                        var s = isExcluded ? $"Exclude {partName}".Cyan() : $"Include {partName}".Green();
+                                        bool newIsExcluded = !GUILayout.Toggle(!isExcluded, s + $" ({part.Type.ToString()})".Orange());
+
+                                        if (newIsExcluded != isExcluded) {
+                                            if (newIsExcluded) {
+                                                excludedParts.Add(partName);
+                                            } else {
+                                                excludedParts.Remove(partName);
+                                            }
+
+                                            bodyPartExclusions[eeName] = excludedParts;
+                                            EntityPartStorage.perSave.ExcludeBodyPartByName[PickedUnit.UniqueId] = bodyPartExclusions;
+                                            EntityPartStorage.SavePerSaveSettings();
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Space(5);
+                    }
+                }
+            }
+        }
+
+        DrawDiv();
+    }
+
     private static void OnUpdate(UnityModManager.ModEntry modEntry, float z) {
         try {
             while (m_MainThreadTaskQueue.TryDequeue(out var task)) {

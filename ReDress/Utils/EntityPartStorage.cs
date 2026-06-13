@@ -127,6 +127,9 @@ public static class EntityPartStorage {
         [JsonProperty]
         public Dictionary<string, HashSet<string>> ExcludeByName = new();
         [JsonProperty]
+        // Character UID => EE => BodyPart
+        public Dictionary<string, Dictionary<string, HashSet<string>>> ExcludeBodyPartByName = new();
+        [JsonProperty]
         public Dictionary<string, HashSet<string>> IncludeByName = new();
         [JsonProperty]
         public Dictionary<string, Dictionary<string, RampColorPreset.IndexSet>> RampOverrideByName = new();

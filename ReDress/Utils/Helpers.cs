@@ -178,6 +178,12 @@ public static class Helpers {
         Patches.IsOutfitColoured = true;
         ColourOutfitPartInternal(mats, c, ee);
     }
+    internal static string? GetBodyPartMapping(this BodyPart part) {
+        if (part == null) {
+            return null;
+        }
+        return part.RendererPrefab?.name ?? part.Type.ToString();
+    }
     private static void ColourOutfitPartInternal(Material[] mats, Character c, EquipmentEntity ee) {
         var uid = GetUIdFromCharacter(c);
         if (uid == null) {

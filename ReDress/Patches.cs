@@ -9,11 +9,13 @@ using Kingmaker.ResourceLinks;
 using Kingmaker.UI.DollRoom;
 using Kingmaker.UnitLogic;
 using Kingmaker.UnitLogic.Parts;
+using Kingmaker.Utility.DotNetExtensions;
 using Kingmaker.View;
 using Kingmaker.View.Equipment;
 using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.CharacterSystem;
 using RogueTrader.Code.ShaderConsts;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using UnityEngine;
@@ -132,6 +134,54 @@ public static class Patches {
                 }
             }
         }
+    }
+    [HarmonyPatch(typeof(Character), nameof(Character.ShouldHideBodyPartFromEquippedItem)), HarmonyPostfix]
+    private static void Character_ShouldHideBodyPartFromEquippedItem_Patch(BodyPart bodyPart, EquipmentEntity fromEntity, ref bool __result, Character __instance) {
+        var uid = Helpers.GetUIdFromCharacter(__instance);
+        if (string.IsNullOrEmpty(uid)) {
+            return;
+        }
+        var eeName = fromEntity.name ?? fromEntity.ToString();
+
+        if (string.IsNullOrEmpty(eeName) || !EntityPartStorage.perSave.ExcludeBodyPartByName.TryGetValue(uid!, out var overrides) ||
+            !overrides.TryGetValue(eeName, out var toExclude)) {
+            return;
+        }
+
+        if (toExclude.Contains(bodyPart.GetBodyPartMapping()!)) {
+            __result = true;
+        }
+    }
+    [HarmonyPatch(typeof(EquipmentEntity), nameof(EquipmentEntity.RepaintTextures), [typeof(EquipmentEntity.PaintedTextures), typeof(int), typeof(int)]), HarmonyTranspiler]
+    private static IEnumerable<CodeInstruction> EquipmentEntity_RepaintTextures_ExcludeBodyPartsTranspiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator) {
+        var bodyPartsField = AccessTools.Field(typeof(EquipmentEntity), nameof(EquipmentEntity.BodyParts));
+        foreach (var inst in instructions) {
+            yield return inst;
+
+            if (inst.LoadsField(bodyPartsField)) {
+
+                yield return new CodeInstruction(OpCodes.Ldarg_0);
+                yield return CodeInstruction.Call((List<BodyPart> parts, EquipmentEntity __instance) => MaybeFilterBodyParts(parts, __instance));
+            }
+        }
+    }
+    private static List<BodyPart> MaybeFilterBodyParts(List<BodyPart> parts, EquipmentEntity __instance) {
+        var eeName = __instance.name ?? __instance.ToString();
+
+        if (string.IsNullOrEmpty(m_CurrentUid) || string.IsNullOrEmpty(eeName) ||
+            !EntityPartStorage.perSave.ExcludeBodyPartByName.TryGetValue(m_CurrentUid!, out var overrides) ||
+            !overrides.TryGetValue(eeName, out var toExclude)) {
+            return parts;
+        }
+
+        var filtered = new List<BodyPart>(parts.Count);
+        foreach (var part in parts) {
+            if (!toExclude.Contains(part.GetBodyPartMapping()!)) {
+                filtered.Add(part);
+            }
+        }
+
+        return filtered;
     }
 
     [HarmonyPatch(typeof(EquipmentEntity), nameof(EquipmentEntity.RepaintTextures), [typeof(EquipmentEntity.PaintedTextures), typeof(int), typeof(int)]), HarmonyPrefix]
