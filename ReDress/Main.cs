@@ -9,6 +9,7 @@ using Kingmaker.ResourceLinks;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.Visual.CharacterSystem;
 using Owlcat.Runtime.Core;
+using StbDxtSharp;
 using System.Collections.Concurrent;
 using System.Reflection;
 using UnityEngine;
@@ -23,6 +24,17 @@ public static class Main {
         PrimaryCustomTex,
         SecondaryCustomTex,
         Ramps
+    }
+    private enum GenderFilter {
+        Any,
+        Female,
+        Male
+    }
+    private enum RaceFilter {
+        Any,
+        Human,
+        SpaceMarine,
+        Eldar
     }
     internal static UnityModManager.ModEntry Mod = null!;
     internal static Harmony HarmonyInstance = null!;
@@ -47,21 +59,28 @@ public static class Main {
     internal static CustomTexCreator? SecondaryTexCreator;
     internal static Browser<string> IncludeBrowser = null!;
     private static float? m_IncludeBrowserLabelWidth = null;
-
+    private static volatile GenderFilter m_GenderFilter = GenderFilter.Any;
+    private static volatile RaceFilter m_RaceFilter = RaceFilter.Any;
+    private static LiveEEPreview? m_Preview;
+    private static float m_BrowserWidth = (int)(EffectiveWindowWidth() * 0.95f);
+    private static readonly int[] m_CellsPerRowOptions = [2, 3, 4, 5, 6, 8];
+    private static int CellsPerRow => Mathf.Clamp(m_Settings.PreviewCellsPerRow, 2, 8);
+    private static float m_CellWidth = m_BrowserWidth / 4.0f;
     internal static bool Load(UnityModManager.ModEntry modEntry) {
         Log = modEntry.Logger;
         Mod = modEntry;
         modEntry.OnGUI = OnGUI;
+        modEntry.OnHideGUI = OnHideGUI;
         modEntry.OnUpdate = OnUpdate;
         IncludeBrowser = new(s => $"{m_Settings.AssetMapping![s]} {s}", s => $"{m_Settings.AssetMapping![s]} {s}", null, (Action<IEnumerable<string>> a) => {
             a(m_Settings.AssetMapping!.Keys);
-        }, false, (int)(EffectiveWindowWidth() * 0.95f));
+        }, false, (int)m_BrowserWidth, Math.Max(1, m_Settings.IncludePageSize));
+        IncludeBrowser.ItemFilter = PassesEEFilters;
         ScheduleForGuiThread(IncludeBrowser.ForceShowAll);
         HarmonyInstance = new Harmony(modEntry.Info.Id);
         HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
         return true;
     }
-
     private static void OnGUI(UnityModManager.ModEntry modEntry) {
         try {
             while (m_GuiThreadTaskQueue.TryDequeue(out var task)) {
@@ -77,6 +96,31 @@ public static class Main {
             }
         } else {
             try {
+                var useLive = m_Settings.UseLivePreviews;
+                var newUseLive = GUILayout.Toggle(useLive, " Use Live Render Previews".Bold() + "   (drag: rotate, middle/shift drag: pan, ctrl+scroll: zoom, double-click: reset; turn off for the plain text UI)".Orange(), AutoWidth());
+                if (newUseLive != useLive) {
+                    m_Settings.UseLivePreviews = newUseLive;
+                    m_Settings.Save();
+                    if (!newUseLive) {
+                        DisposePreview();
+                    }
+                }
+                if (newUseLive) {
+                    m_Preview ??= new();
+                    m_CellWidth = m_BrowserWidth / CellsPerRow;
+                    using (HorizontalScope()) {
+                        GUILayout.Label("Preview cells per row: ", AutoWidth());
+                        foreach (var n in m_CellsPerRowOptions) {
+                            var label = n == CellsPerRow ? n.ToString().Orange().Bold() : n.ToString();
+                            if (GUILayout.Button(label, AutoWidth())) {
+                                m_Settings.PreviewCellsPerRow = n;
+                                m_Settings.Save();
+                            }
+                        }
+                        GUILayout.Label("   (fewer per row = larger previews)".Green(), AutoWidth());
+                    }
+                }
+                DrawDiv();
                 DisclosureToggle(ref m_OpenedGuide, "Show Explanations", AutoWidth());
                 if (m_OpenedGuide) {
                     using (HorizontalScope()) {
@@ -266,6 +310,12 @@ public static class Main {
                                 }
                                 EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmpExcludes);
                                 tmpExcludes ??= [];
+                                void Exclude(string eeName) {
+                                    tmpExcludes.Add(eeName);
+                                    EntityPartStorage.perSave.ExcludeByName[PickedUnit!.UniqueId] = tmpExcludes;
+                                    EntityPartStorage.SavePerSaveSettings();
+                                }
+                                var excludableEEs = new List<EquipmentEntity>();
                                 foreach (var ee in PickedUnit!.View.CharacterAvatar.EquipmentEntities?.Union(PickedUnit.View.CharacterAvatar.SavedEquipmentEntities?.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()) ?? []) ?? []) {
                                     if (ee == null) {
                                         Log.Log($"Warning: Iterating over EEs of unit {PickedUnit.CharacterName} encountered disposed Unity Object");
@@ -275,29 +325,63 @@ public static class Main {
                                     if (tmpExcludes.Contains(ee.name)) {
                                         continue;
                                     }
-                                    using (HorizontalScope()) {
-                                        if (GUILayout.Button("Exclude", AutoWidth())) {
-                                            tmpExcludes.Add(ee.name);
-                                            EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes;
-                                            EntityPartStorage.SavePerSaveSettings();
+                                    excludableEEs.Add(ee);
+                                }
+                                if (m_Settings.UseLivePreviews) {
+                                    GUILayout.Label("The previews show how the unit would look ".Green() + "after".Orange() + " excluding the piece.".Green(), AutoWidth());
+                                    DrawCellGrid(excludableEEs, ee => {
+                                        using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
+                                            var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
+                                            m_Preview!.DrawCell(rect, $"rem:{ee.name}", PreviewSpec.Remove(ee.name));
+                                            GUILayout.Label($"{ee.name}".Green(), Width(m_CellWidth));
+                                            if (GUILayout.Button("Exclude", GUILayout.Width(m_CellWidth))) {
+                                                Exclude(ee.name);
+                                            }
                                         }
-                                        GUILayout.Label($"    {ee?.name ?? "Null????????????"}");
+                                    });
+                                } else {
+                                    foreach (var ee in excludableEEs) {
+                                        using (HorizontalScope()) {
+                                            if (GUILayout.Button("Exclude", AutoWidth())) {
+                                                Exclude(ee.name);
+                                            }
+                                            GUILayout.Label($"    {ee?.name ?? "Null????????????"}");
+                                        }
                                     }
                                 }
                                 GUILayout.Label("------------------------------------------");
                                 GUILayout.Label("Current Excludes:");
                                 EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var currentExcludes);
+                                void RemoveExclusion(string eeName) {
+                                    EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmpExcludes2);
+                                    tmpExcludes2 ??= [];
+                                    tmpExcludes2.Remove(eeName);
+                                    EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes2;
+                                    EntityPartStorage.SavePerSaveSettings();
+                                }
                                 if (currentExcludes?.Count > 0) {
-                                    foreach (var eeName in currentExcludes.ToList()) {
-                                        using (HorizontalScope()) {
-                                            if (GUILayout.Button("Remove Exclusion", AutoWidth())) {
-                                                EntityPartStorage.perSave.ExcludeByName.TryGetValue(PickedUnit.UniqueId, out var tmpExcludes2);
-                                                tmpExcludes2 ??= [];
-                                                tmpExcludes2.Remove(eeName);
-                                                EntityPartStorage.perSave.ExcludeByName[PickedUnit.UniqueId] = tmpExcludes2;
-                                                EntityPartStorage.SavePerSaveSettings();
+                                    if (m_Settings.UseLivePreviews) {
+                                        GUILayout.Label("The previews show how the unit would look ".Green() + "after".Orange() + " removing the exclusion.".Green(), AutoWidth());
+                                        DrawCellGrid(currentExcludes.ToList(), eeName => {
+                                            using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
+                                                if (m_Settings.NameToGuid.TryGetValue(eeName, out var guid)) {
+                                                    var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
+                                                    m_Preview!.DrawCell(rect, $"add:{guid}", PreviewSpec.Add(guid));
+                                                }
+                                                GUILayout.Label($"{eeName}".Cyan(), Width(m_CellWidth));
+                                                if (GUILayout.Button("Remove Exclusion", GUILayout.Width(m_CellWidth))) {
+                                                    RemoveExclusion(eeName);
+                                                }
                                             }
-                                            GUILayout.Label($"    {eeName}");
+                                        });
+                                    } else {
+                                        foreach (var eeName in currentExcludes.ToList()) {
+                                            using (HorizontalScope()) {
+                                                if (GUILayout.Button("Remove Exclusion", AutoWidth())) {
+                                                    RemoveExclusion(eeName);
+                                                }
+                                                GUILayout.Label($"    {eeName}");
+                                            }
                                         }
                                     }
                                 }
@@ -316,36 +400,97 @@ public static class Main {
                                     IncludeBrowser.QueueUpdateItems([]);
                                     EntityPartStorage.SavePerSaveSettings();
                                 }
+                                using (HorizontalScope()) {
+                                    GUILayout.Label("Gender: ", AutoWidth());
+                                    var genderFilter = m_GenderFilter;
+                                    if (SelectionGrid(ref genderFilter, 3, f => f switch {
+                                        GenderFilter.Female => "Female (_F)",
+                                        GenderFilter.Male => "Male (_M)",
+                                        _ => "Any"
+                                    }, AutoWidth())) {
+                                        m_GenderFilter = genderFilter;
+                                        IncludeBrowser.RedoSearch();
+                                    }
+                                    Space(30);
+                                    GUILayout.Label("Race: ", AutoWidth());
+                                    var raceFilter = m_RaceFilter;
+                                    if (SelectionGrid(ref raceFilter, 4, f => f switch {
+                                        RaceFilter.Human => "Human (_HM)",
+                                        RaceFilter.SpaceMarine => "Space Marine (_SM)",
+                                        RaceFilter.Eldar => "Eldar (_EL)",
+                                        _ => "Any"
+                                    }, AutoWidth())) {
+                                        m_RaceFilter = raceFilter;
+                                        IncludeBrowser.RedoSearch();
+                                    }
+                                    Space(30);
+                                    GUILayout.Label("(EEs without a gender/race suffix always stay visible)".Green(), AutoWidth());
+                                }
+                                using (HorizontalScope()) {
+                                    GUILayout.Label("Items per page: ", AutoWidth());
+                                    int pageSize = m_Settings.IncludePageSize;
+                                    if (IntTextField(ref pageSize, Width(60))) {
+                                        m_Settings.IncludePageSize = Mathf.Clamp(pageSize, 1, 200);
+                                        m_Settings.Save();
+                                        IncludeBrowser.SetPageLimit(m_Settings.IncludePageSize);
+                                    }
+                                }
                                 EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit!.UniqueId, out var currentIncludes);
                                 m_IncludeBrowserLabelWidth ??= CalculateLargestLabelSize(["Remove", "Include"], GUI.skin.button);
-                                IncludeBrowser.OnGUI(guid => {
-                                    using (HorizontalScope()) {
-                                        if (currentIncludes?.Contains(guid) ?? false) {
-                                            GUILayout.Label($"{m_Settings.AssetMapping![guid]}".Cyan(), Width(IncludeBrowser.TrackedWidth!.Value));
-                                            GUILayout.Space(20);
-                                            if (GUILayout.Button("Remove", GUILayout.Width(m_IncludeBrowserLabelWidth.Value))) {
-                                                currentIncludes.Remove(guid);
-                                                IncludeBrowser.QueueUpdateItems(currentIncludes);
-                                                EntityPartStorage.perSave.IncludeByName[PickedUnit.UniqueId] = currentIncludes;
-                                                EntityPartStorage.SavePerSaveSettings();
-                                            }
-                                            GUILayout.Space(20);
-                                            GUILayout.TextArea($"{guid}", Width(IncludeBrowser.TrackedWidth2!.Value));
-                                        } else {
-                                            GUILayout.Label($"{m_Settings.AssetMapping![guid]}".Green(), Width(IncludeBrowser.TrackedWidth!.Value));
-                                            GUILayout.Space(20);
-                                            if (GUILayout.Button("Include", GUILayout.Width(m_IncludeBrowserLabelWidth.Value))) {
-                                                currentIncludes ??= [];
-                                                currentIncludes.Add(guid);
-                                                IncludeBrowser.QueueUpdateItems(currentIncludes);
-                                                EntityPartStorage.perSave.IncludeByName[PickedUnit.UniqueId] = currentIncludes;
-                                                EntityPartStorage.SavePerSaveSettings();
-                                            }
-                                            GUILayout.Space(20);
-                                            GUILayout.TextArea($"{guid}", Width(IncludeBrowser.TrackedWidth2!.Value));
-                                        }
+                                void ToggleInclude(string guid, bool isIncluded) {
+                                    currentIncludes ??= [];
+                                    if (isIncluded) {
+                                        currentIncludes.Remove(guid);
+                                    } else {
+                                        currentIncludes.Add(guid);
                                     }
-                                });
+                                    IncludeBrowser.QueueUpdateItems(currentIncludes);
+                                    EntityPartStorage.perSave.IncludeByName[PickedUnit!.UniqueId] = currentIncludes;
+                                    EntityPartStorage.SavePerSaveSettings();
+                                }
+                                if (m_Settings.UseLivePreviews) {
+                                    int col = 0;
+                                    var perRow = CellsPerRow;
+                                    IncludeBrowser.OnGUI(guid => {
+                                        if (col % perRow == 0) { GUILayout.BeginHorizontal(); }
+                                        col++;
+                                        DrawEECell(guid);
+                                        if (col % perRow == 0 || IncludeBrowser.CurrentlyIsLastElement) {
+                                            if (IncludeBrowser.CurrentlyIsLastElement) {
+                                                while (col % perRow != 0) { col++; GUILayout.Space(m_CellWidth); }
+                                            }
+                                            GUILayout.EndHorizontal();
+                                            GUILayout.Space(4);
+                                        }
+                                        void DrawEECell(string guid) {
+                                            using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
+                                                var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
+                                                m_Preview!.DrawCell(rect, $"add:{guid}", PreviewSpec.Add(guid));
+
+                                                bool isIncluded = currentIncludes?.Contains(guid) ?? false;
+                                                GUILayout.Label(isIncluded ? $"{m_Settings.AssetMapping![guid]}".Cyan() : $"{m_Settings.AssetMapping![guid]}".Green(), Width(m_CellWidth));
+                                                if (GUILayout.Button(isIncluded ? "Remove" : "Include", GUILayout.Width(m_CellWidth))) {
+                                                    ToggleInclude(guid, isIncluded);
+                                                }
+                                                GUILayout.TextArea($"{guid}", Width(m_CellWidth));
+                                            }
+                                        }
+                                    });
+                                } else {
+                                    IncludeBrowser.OnGUI(guid => {
+                                        using (HorizontalScope()) {
+                                            bool isIncluded = currentIncludes?.Contains(guid) ?? false;
+                                            var name = m_Settings.AssetMapping!.TryGetValue(guid, out var n) ? n : guid;
+                                            GUILayout.Label(isIncluded ? name.Cyan() : name.Green(), Width(IncludeBrowser.TrackedWidth ?? 400));
+                                            Space(10);
+                                            if (GUILayout.Button(isIncluded ? "Remove" : "Include", Width(m_IncludeBrowserLabelWidth!.Value))) {
+                                                ToggleInclude(guid, isIncluded);
+                                            }
+                                            Space(10);
+                                            GUILayout.TextArea($"{guid}", Width(IncludeBrowser.TrackedWidth2 ?? 400));
+                                        }
+                                    });
+                                }
                             }
                         }
                     }
@@ -435,46 +580,78 @@ public static class Main {
                                 customTexOverrides.TryGetValue(eeName, out var texOverrides);
                                 if (m_CurrentColorSectionEE == eeName) {
                                     if (m_CurrentMode == CurrentColorWindow.PrimaryCustomTex) {
-                                        if (texOverrides.Item1 != null) {
-                                            GUILayout.Label($"Current Primary Override: {texOverrides.Item1}");
-                                        }
-                                        if (PrimaryTexCreator?.EEName != eeName) {
-                                            PrimaryTexCreator = new(eeName, texOverrides.Item1);
-                                        }
-                                        if (PrimaryTexCreator.ColorPickerGUI()) {
-                                            texOverrides.Item1 = PrimaryTexCreator.GetTexCopy();
-                                            customTexOverrides[eeName] = texOverrides;
-                                            EntityPartStorage.perSave.CustomColorsByName[PickedUnit.UniqueId] = customTexOverrides;
-                                            EntityPartStorage.SavePerSaveSettings();
-                                            Helpers.SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
+                                        using (HorizontalScope()) {
+                                            using (VerticalScope()) {
+                                                if (texOverrides.Item1 != null) {
+                                                    GUILayout.Label($"Current Primary Override: {texOverrides.Item1}");
+                                                }
+                                                if (PrimaryTexCreator?.EEName != eeName) {
+                                                    PrimaryTexCreator = new(eeName, texOverrides.Item1);
+                                                }
+                                                if (PrimaryTexCreator.ColorPickerGUI()) {
+                                                    texOverrides.Item1 = PrimaryTexCreator.GetTexCopy();
+                                                    customTexOverrides[eeName] = texOverrides;
+                                                    EntityPartStorage.perSave.CustomColorsByName[PickedUnit.UniqueId] = customTexOverrides;
+                                                    EntityPartStorage.SavePerSaveSettings();
+                                                    Helpers.SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
+                                                }
+                                            }
+                                            DrawCurrentLookPreviewCell();
                                         }
                                     } else if (m_CurrentMode == CurrentColorWindow.SecondaryCustomTex) {
-                                        if (texOverrides.Item2 != null) {
-                                            GUILayout.Label($"Current Secondary Override: {texOverrides.Item2}");
-                                        }
-                                        if (SecondaryTexCreator?.EEName != eeName) {
-                                            SecondaryTexCreator = new(eeName, texOverrides.Item2);
-                                        }
-                                        if (SecondaryTexCreator.ColorPickerGUI()) {
-                                            texOverrides.Item2 = SecondaryTexCreator.GetTexCopy();
-                                            customTexOverrides[eeName] = texOverrides;
-                                            EntityPartStorage.perSave.CustomColorsByName[PickedUnit.UniqueId] = customTexOverrides;
-                                            EntityPartStorage.SavePerSaveSettings();
-                                            Helpers.SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
+                                        using (HorizontalScope()) {
+                                            using (VerticalScope()) {
+                                                if (texOverrides.Item2 != null) {
+                                                    GUILayout.Label($"Current Secondary Override: {texOverrides.Item2}");
+                                                }
+                                                if (SecondaryTexCreator?.EEName != eeName) {
+                                                    SecondaryTexCreator = new(eeName, texOverrides.Item2);
+                                                }
+                                                if (SecondaryTexCreator.ColorPickerGUI()) {
+                                                    texOverrides.Item2 = SecondaryTexCreator.GetTexCopy();
+                                                    customTexOverrides[eeName] = texOverrides;
+                                                    EntityPartStorage.perSave.CustomColorsByName[PickedUnit.UniqueId] = customTexOverrides;
+                                                    EntityPartStorage.SavePerSaveSettings();
+                                                    Helpers.SetColorPair(ee, new() { PrimaryIndex = -1, SecondaryIndex = -1 });
+                                                }
+                                            }
+                                            DrawCurrentLookPreviewCell();
                                         }
                                     } else if (m_CurrentMode == CurrentColorWindow.Ramps) {
-                                        foreach (var pair in colorPresets!.IndexPairs) {
-                                            using (HorizontalScope()) {
-                                                if (maybeRampOverride != pair) {
-                                                    GUILayout.Label($"{pair.Name ?? "Null Name"} - {pair.PrimaryIndex} - {pair.SecondaryIndex}", AutoWidth());
-                                                    if (GUILayout.Button("Select", AutoWidth())) {
-                                                        rampOverrides[eeName] = pair;
-                                                        EntityPartStorage.perSave.RampOverrideByName[PickedUnit.UniqueId] = rampOverrides;
-                                                        EntityPartStorage.SavePerSaveSettings();
-                                                        Helpers.SetColorPair(ee, pair);
+                                        void SelectPair(RampColorPreset.IndexSet pair) {
+                                            rampOverrides[eeName] = pair;
+                                            EntityPartStorage.perSave.RampOverrideByName[PickedUnit!.UniqueId] = rampOverrides;
+                                            EntityPartStorage.SavePerSaveSettings();
+                                            Helpers.SetColorPair(ee, pair);
+                                        }
+                                        if (m_Settings.UseLivePreviews) {
+                                            DrawCellGrid(colorPresets!.IndexPairs, pair => {
+                                                using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
+                                                    var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
+                                                    m_Preview!.DrawCell(rect, $"ramp:{eeName}:{pair.PrimaryIndex}:{pair.SecondaryIndex}", PreviewSpec.Ramps(eeName, pair.PrimaryIndex, pair.SecondaryIndex));
+                                                    var pairLabel = $"{pair.Name ?? "Null Name"} - {pair.PrimaryIndex} - {pair.SecondaryIndex}";
+                                                    if (maybeRampOverride != pair) {
+                                                        GUILayout.Label(pairLabel, Width(m_CellWidth));
+                                                        if (GUILayout.Button("Select", GUILayout.Width(m_CellWidth))) {
+                                                            SelectPair(pair);
+                                                        }
+                                                    } else {
+                                                        GUILayout.Label(pairLabel.Cyan(), Width(m_CellWidth));
+                                                        GUILayout.Label("Selected".Cyan(), Width(m_CellWidth));
                                                     }
-                                                } else {
-                                                    GUILayout.Label($"{pair.Name ?? "Null Name"} - {pair.PrimaryIndex} - {pair.SecondaryIndex}".Cyan(), AutoWidth());
+                                                }
+                                            });
+                                        } else {
+                                            foreach (var pair in colorPresets!.IndexPairs) {
+                                                using (HorizontalScope()) {
+                                                    if (maybeRampOverride != pair) {
+                                                        GUILayout.Label($"{pair.Name ?? "Null Name"} - {pair.PrimaryIndex} - {pair.SecondaryIndex}", AutoWidth());
+                                                        if (GUILayout.Button("Select", AutoWidth())) {
+                                                            SelectPair(pair);
+                                                        }
+                                                    } else {
+                                                        GUILayout.Label($"{pair.Name ?? "Null Name"} - {pair.PrimaryIndex} - {pair.SecondaryIndex}".Cyan(), AutoWidth());
+                                                    }
                                                 }
                                             }
                                         }
@@ -557,6 +734,73 @@ public static class Main {
         DrawDiv();
     }
 
+    private static void ParseEESuffix(string eeName, out string? gender, out string? race) {
+        gender = null;
+        race = null;
+        var parts = eeName.Split('_');
+        for (int i = parts.Length - 1; i >= 0 && i >= parts.Length - 2; i--) {
+            switch (parts[i]) {
+                case "HM": case "SM": case "EL":
+                    race ??= parts[i];
+                    break;
+                case "M": case "F":
+                    gender ??= parts[i];
+                    break;
+            }
+        }
+    }
+    private static bool PassesEEFilters(string guid) {
+        var genderFilter = m_GenderFilter;
+        var raceFilter = m_RaceFilter;
+        if (genderFilter == GenderFilter.Any && raceFilter == RaceFilter.Any) {
+            return true;
+        }
+        if (!(m_Settings.AssetMapping?.TryGetValue(guid, out var name) ?? false)) {
+            return true;
+        }
+        ParseEESuffix(name, out var gender, out var race);
+        if (genderFilter != GenderFilter.Any && gender != null
+            && gender != (genderFilter == GenderFilter.Male ? "M" : "F")) {
+            return false;
+        }
+        if (raceFilter != RaceFilter.Any && race != null
+            && race != raceFilter switch { RaceFilter.Human => "HM", RaceFilter.SpaceMarine => "SM", _ => "EL" }) {
+            return false;
+        }
+        return true;
+    }
+    private static void DrawCellGrid<T>(IReadOnlyList<T> items, Action<T> drawCell, int perRow = 0) {
+        if (perRow <= 0) { perRow = CellsPerRow; }
+        for (int i = 0; i < items.Count; i++) {
+            if (i % perRow == 0) { GUILayout.BeginHorizontal(); }
+            drawCell(items[i]);
+            if (i % perRow == perRow - 1 || i == items.Count - 1) {
+                GUILayout.EndHorizontal();
+                GUILayout.Space(4);
+            }
+        }
+    }
+    private static void DrawCurrentLookPreviewCell() {
+        if (!m_Settings.UseLivePreviews || m_Preview == null) {
+            return;
+        }
+        Space(20);
+        using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
+            var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
+            m_Preview.DrawCell(rect, "asis", PreviewSpec.AsIs);
+            GUILayout.Label("Current Look".Green(), Width(m_CellWidth));
+        }
+    }
+    internal static void InvalidatePreviews() {
+        m_Preview?.InvalidateAll();
+    }
+    internal static void DisposePreview() {
+        m_Preview?.Dispose();
+        m_Preview = null;
+    }
+    private static void OnHideGUI(UnityModManager.ModEntry modEntry) {
+        DisposePreview();
+    }
     private static void OnUpdate(UnityModManager.ModEntry modEntry, float z) {
         try {
             while (m_MainThreadTaskQueue.TryDequeue(out var task)) {

@@ -17,11 +17,15 @@ public class VerticalList<T> : IPagedList where T : notnull {
     protected int ItemCount = 0;
     protected bool ShowDivBetweenItems = true;
     protected readonly Dictionary<object, T> ToggledDetailGUIs = [];
-    protected IEnumerable<T> PagedItems = [];
+    public List<T> PagedItems = [];
     protected IEnumerable<T> Items = [];
     protected int PageLimit;
     public float? TrackedWidth = null;
     public float? TrackedWidth2 = null;
+    public bool CurrentlyIsLastElement {
+        get;
+        private set;
+    }
     protected int EffectivePageLimit {
         get {
             return PageLimit;
@@ -54,6 +58,17 @@ public class VerticalList<T> : IPagedList where T : notnull {
     /// Clears all expanded detail sections.
     /// </summary>
     public void ClearDetails() => ToggledDetailGUIs.Clear();
+    /// <summary>
+    /// Changes the number of items shown per page and refreshes pagination.
+    /// </summary>
+    public void SetPageLimit(int limit) {
+        limit = Math.Max(1, limit);
+        if (limit == PageLimit) {
+            return;
+        }
+        PageLimit = limit;
+        UpdatePages();
+    }
     /// <summary>
     /// Toggles a collapsible detail section for the specified item.
     /// </summary>
@@ -112,7 +127,7 @@ public class VerticalList<T> : IPagedList where T : notnull {
     protected virtual void UpdatePagedItems() {
         var offset = Math.Min(ItemCount, (CurrentPage - 1) * EffectivePageLimit);
         PagedItemsCount = Math.Min(EffectivePageLimit, ItemCount - offset);
-        PagedItems = Items.Skip(offset).Take(PagedItemsCount);
+        PagedItems = [.. Items.Skip(offset).Take(PagedItemsCount)];
         if (ReferenceEquals(this, Main.IncludeBrowser)) {
             void UpdateWidths() {
                 TrackedWidth = CalculateLargestLabelSize(PagedItems.Select(i => Main.m_Settings.AssetMapping![(i as string)!]));
@@ -160,11 +175,15 @@ public class VerticalList<T> : IPagedList where T : notnull {
     public virtual void OnGUI(Action<T> onItemGUI) {
         using (VerticalScope(PageWidth)) {
             HeaderGUI();
-            foreach (var item in PagedItems) {
+            for (var i = 0; i < PagedItems.Count; i++) {
                 if (ShowDivBetweenItems) {
                     DrawDiv();
                 }
-                onItemGUI(item);
+                if (i == PagedItems.Count - 1) {
+                    CurrentlyIsLastElement = true;
+                }
+                onItemGUI(PagedItems[i]);
+                CurrentlyIsLastElement = false;
             }
         }
     }
