@@ -11,6 +11,9 @@ namespace ReDress;
 internal class Cache : AbstractSettings {
     public int BrowserPageLimit = 20;
     public bool ToggleSearchAsYouType = true;
+    public bool UseLivePreviews = true;
+    public int PreviewCellsPerRow = 4;
+    public int IncludePageSize = 16;
     public float SearchDelay = 0.3f;
     public string CachedVersion = "";
     public Dictionary<string, string> BaseGameEEs = [];
@@ -31,6 +34,22 @@ internal class Cache : AbstractSettings {
             return field;
         }
         private set;
+    }
+    [JsonIgnore]
+    private Dictionary<string, string>? m_NameToGuid;
+    [JsonIgnore]
+    public Dictionary<string, string> NameToGuid {
+        get {
+            if (m_NameToGuid == null) {
+                m_NameToGuid = new();
+                foreach (var pair in AssetMapping!) {
+                    if (!m_NameToGuid.ContainsKey(pair.Value)) {
+                        m_NameToGuid[pair.Value] = pair.Key;
+                    }
+                }
+            }
+            return m_NameToGuid;
+        }
     }
     public HashSet<(string, string)> OmmSet = [];
     [Obsolete]
@@ -107,6 +126,7 @@ internal class Cache : AbstractSettings {
         CacheInstance.CachedVersion = GameVersion.GetVersion();
         CacheInstance.OmmSet = [.. OwlcatModificationsManager.s_Instance.AppliedModifications.Select<OwlcatModification, (string, string)>(m => new(m.Manifest.UniqueName, m.Manifest.Version))];
         CacheInstance.AssetMapping = null;
+        CacheInstance.m_NameToGuid = null;
         CacheInstance.Save();
         m_BaseGameRebuild = false;
         m_IsRebuilding = false;

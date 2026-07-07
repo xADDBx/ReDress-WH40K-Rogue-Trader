@@ -27,6 +27,7 @@ public static class Patches {
     private static bool m_IsCurrentlyLoadingGame = false;
     private static string? m_CurrentUid;
     private static (EntityPartStorage.CustomColorTex?, EntityPartStorage.CustomColorTex?, EntityPartStorage.CustomColorTex?) m_CustomOverride = (null, null, null);
+    private static bool m_IsPreviewCharacter = false;
     private static Dictionary<string, HashSet<EquipmentEntity>> m_CachedLinks = new();
     internal static bool IsOutfitColoured = false;
     [HarmonyPatch(typeof(AbstractUnitEntityView), nameof(AbstractUnitEntityView.SetupCharacterAvatar)), HarmonyPrefix]
@@ -187,6 +188,11 @@ public static class Patches {
     [HarmonyPatch(typeof(EquipmentEntity), nameof(EquipmentEntity.RepaintTextures), [typeof(EquipmentEntity.PaintedTextures), typeof(int), typeof(int)]), HarmonyPrefix]
     private static void EquipmentEntity_RepaintTextures(EquipmentEntity __instance, EquipmentEntity.PaintedTextures paintedTextures, ref int primaryRampIndex, ref int secondaryRampIndex) {
         m_CustomOverride = (null, null, null);
+        if (m_IsPreviewCharacter && LiveEEPreview.TryGetRampPreview(__instance.name ?? __instance.ToString(), out var previewPair)) {
+            primaryRampIndex = previewPair.Primary;
+            secondaryRampIndex = previewPair.Secondary;
+            return;
+        }
         if (m_CurrentUid == null) {
             Log.Log(new System.Diagnostics.StackTrace().ToString());
             return;
@@ -251,6 +257,9 @@ public static class Patches {
     private static class Character_Patch {
         [HarmonyPatch(nameof(Character.AddEquipmentEntity), [typeof(EquipmentEntity), typeof(bool), typeof(bool), typeof(ItemSlot)]), HarmonyPrefix]
         private static bool AddEquipmentEntity(Character __instance, EquipmentEntity ee) {
+            if (LiveEEPreview.BypassAddFilter) {
+                return true;
+            }
             try {
                 var uniqueId = Helpers.GetUIdFromCharacter(__instance);
                 if (uniqueId == null) {
@@ -344,10 +353,12 @@ public static class Patches {
         [HarmonyPatch(nameof(Character.MergeOverlays)), HarmonyPrefix]
         private static void MergeOverlays(Character __instance) {
             m_CurrentUid = Helpers.GetUIdFromCharacter(__instance);
+            m_IsPreviewCharacter = LiveEEPreview.IsPreviewCharacter(__instance);
         }
         [HarmonyPatch(nameof(Character.OnRenderObject)), HarmonyPrefix]
         private static void OnRenderObject(Character __instance) {
             m_CurrentUid = Helpers.GetUIdFromCharacter(__instance);
+            m_IsPreviewCharacter = LiveEEPreview.IsPreviewCharacter(__instance);
         }
     }
 

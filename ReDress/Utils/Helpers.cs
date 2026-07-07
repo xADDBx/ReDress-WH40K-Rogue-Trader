@@ -71,6 +71,9 @@ public static class Helpers {
     }
     internal static ConditionalWeakTable<Character, string> UIdCache = new();
     public static string? GetUIdFromCharacter(Character c) {
+        if (LiveEEPreview.IsPreviewCharacter(c) && UIdCache.TryGetValue(c, out var directUId)) {
+            return directUId;
+        }
         if (c.IsInDollRoom) {
             c = UIDollRooms.Instance?.CharacterDollRoom?.m_OriginalAvatar ?? c;
         }

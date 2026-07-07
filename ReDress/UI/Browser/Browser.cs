@@ -25,6 +25,11 @@ public class Browser<T> : VerticalList<T> where T : notnull {
     protected bool ShowSearchBar = true;
     protected ThreadedListSearcher<T> Searcher;
     /// <summary>
+    /// Optional predicate applied on top of the text search. Call <see cref="RedoSearch"/> after
+    /// changing it (or state it depends on). Runs on the search thread, so it must be thread-safe.
+    /// </summary>
+    public Func<T, bool>? ItemFilter = null;
+    /// <summary>
     /// Initializes a new instance of the <see cref="Browser{T}"/> class.
     /// </summary>
     /// <param name="sortKey">
@@ -115,11 +120,11 @@ public class Browser<T> : VerticalList<T> where T : notnull {
         LastSearchedAt = Time.time;
         m_DebounceTask = null;
         CurrentPage = 1;
-        if (canOptimizeSearch) {
-            Searcher.StartSearch(Items, query, GetSearchKey, GetSortKey);
-        } else {
-            Searcher.StartSearch((ShowAll && UnsearchedShowAllItems != null) ? UnsearchedShowAllItems : UnsearchedItems, query, GetSearchKey, GetSortKey);
+        var source = canOptimizeSearch ? Items : ((ShowAll && UnsearchedShowAllItems != null) ? UnsearchedShowAllItems : UnsearchedItems);
+        if (ItemFilter != null) {
+            source = source.Where(ItemFilter);
         }
+        Searcher.StartSearch(source, query, GetSearchKey, GetSortKey);
     }
     protected void SearchBarGUI() {
         if (!ShowSearchBar) return;

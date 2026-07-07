@@ -183,6 +183,7 @@ public static class EntityPartStorage {
             if (reloadCharacterClothing) {
                 Main.Log.Log($"Updating per-save settings + Updating unit {Main.PickedUnit}");
                 Helpers.DoForEachValidUnit(UpdateUnit);
+                Main.InvalidatePreviews();
                 var u = UIDollRooms.Instance?.CharacterDollRoom?.Unit;
                 if (u != null) {
                     CharacterDollRoomNormalUnitHandling = false;
