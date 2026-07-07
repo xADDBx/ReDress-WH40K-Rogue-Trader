@@ -201,13 +201,17 @@ public static class Main {
                 DrawDiv();
                 CharacterPicker.OnFilterPickerGUI(null, GUILayout.Width(0.98f * UnityModManager.Params.WindowWidth));
                 DrawDiv();
-                bool changed = CharacterPicker.OnCharacterPickerGUI(null, GUILayout.Width(0.98f * UnityModManager.Params.WindowWidth));
+                var changed = CharacterPicker.OnCharacterPickerGUI(null, GUILayout.Width(0.98f * UnityModManager.Params.WindowWidth));
                 GUILayout.Label("Pick the character you want to modify:");
                 Space(5);
                 if (changed) {
                     PickedUnit = CharacterPicker.CurrentUnit;
-                    EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmp);
-                    IncludeBrowser.QueueUpdateItems(tmp ?? []);
+                    if (PickedUnit != null) {
+                        EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit!.UniqueId, out var tmp);
+                        IncludeBrowser.QueueUpdateItems(tmp ?? []);
+                    } else {
+                        IncludeBrowser.QueueUpdateItems([]);
+                    }
                     m_SelectedOutfit = Outfit.Current;
                 }
                 if (PickedUnit != CharacterPicker.CurrentUnit) {
