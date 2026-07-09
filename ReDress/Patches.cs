@@ -194,13 +194,17 @@ public static class Patches {
             return;
         }
         if (m_CurrentUid == null) {
+#if DEBUG
             Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
             return;
         }
         if (EntityPartStorage.perSave.RampOverrideByName.TryGetValue(m_CurrentUid, out var overrides)) {
             var eeName = __instance.name ?? __instance.ToString();
             if (eeName == null) {
+#if DEBUG
                 Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
                 return;
             }
             if (overrides.TryGetValue(eeName, out var pair)) {
@@ -211,7 +215,9 @@ public static class Patches {
         if (EntityPartStorage.perSave.CustomColorsByName.TryGetValue(m_CurrentUid, out var overrides2)) {
             var eeName = __instance.name ?? __instance.ToString();
             if (eeName == null) {
+#if DEBUG
                 Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
                 return;
             }
             if (overrides2.TryGetValue(eeName, out var customColor)) {
@@ -321,7 +327,9 @@ public static class Patches {
                 mats = Helpers.GetMats(__instance, ee);
                 var eeName = ee.name ?? ee.ToString();
                 if (eeName == null) {
+#if DEBUG
                     Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
                     return;
                 }
                 if (overrides.TryGetValue(eeName, out var pair)) {
@@ -335,7 +343,9 @@ public static class Patches {
                 mats = Helpers.GetMats(__instance, ee);
                 var eeName = ee.name ?? ee.ToString();
                 if (eeName == null) {
+#if DEBUG
                     Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
                     return;
                 }
                 if (overrides2.TryGetValue(eeName, out var customColor)) {

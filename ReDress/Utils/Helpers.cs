@@ -140,7 +140,9 @@ public static class Helpers {
     public static void ColourOutfitPart(Renderer renderer, Character c, EquipmentEntity ee, EquipmentEntity.OutfitPart outfitPart, string goName) {
         var uid = GetUIdFromCharacter(c);
         if (uid == null) {
+#if DEBUG
             Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
             return;
         }
         List<Material>? mats = null;
@@ -148,13 +150,19 @@ public static class Helpers {
             mats = GetMats(renderer, c, ee, outfitPart, goName);
             var eeName = ee.name ?? ee.ToString();
             if (eeName == null) {
+#if DEBUG
                 Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
                 return;
             }
             if (overrides.TryGetValue(eeName, out var pair)) {
                 foreach (var mat in mats) {
-                    mat.SetTexture(ShaderProps._Ramp1, ee.PrimaryRamps[pair.PrimaryIndex]);
-                    mat.SetTexture(ShaderProps._Ramp2, ee.SecondaryRamps[pair.PrimaryIndex]);
+                    if (ee.PrimaryRamps.Count > pair.PrimaryIndex && pair.PrimaryIndex >= 0) {
+                        mat.SetTexture(ShaderProps._Ramp1, ee.PrimaryRamps[pair.PrimaryIndex]);
+                    }
+                    if (ee.SecondaryRamps.Count > pair.SecondaryIndex && pair.SecondaryIndex >= 0) {
+                        mat.SetTexture(ShaderProps._Ramp2, ee.SecondaryRamps[pair.SecondaryIndex]);
+                    }
                 }
             }
         }
@@ -162,7 +170,9 @@ public static class Helpers {
             mats = GetMats(renderer, c, ee, outfitPart, goName);
             var eeName = ee.name ?? ee.ToString();
             if (eeName == null) {
+#if DEBUG
                 Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
                 return;
             }
             if (overrides2.TryGetValue(eeName, out var customColor)) {
@@ -190,13 +200,17 @@ public static class Helpers {
     private static void ColourOutfitPartInternal(Material[] mats, Character c, EquipmentEntity ee) {
         var uid = GetUIdFromCharacter(c);
         if (uid == null) {
+#if DEBUG
             Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
             return;
         }
         if (EntityPartStorage.perSave.RampOverrideByName.TryGetValue(uid, out var overrides)) {
             var eeName = ee.name ?? ee.ToString();
             if (eeName == null) {
+#if DEBUG
                 Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
                 return;
             }
             if (overrides.TryGetValue(eeName, out var pair)) {
@@ -209,7 +223,9 @@ public static class Helpers {
         if (EntityPartStorage.perSave.CustomColorsByName.TryGetValue(uid, out var overrides2)) {
             var eeName = ee.name ?? ee.ToString();
             if (eeName == null) {
+#if DEBUG
                 Main.Log.Log(new System.Diagnostics.StackTrace().ToString());
+#endif
                 return;
             }
             if (overrides2.TryGetValue(eeName, out var customColor)) {
