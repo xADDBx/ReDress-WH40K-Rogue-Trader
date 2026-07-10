@@ -742,7 +742,7 @@ public static class Main {
 
         DrawDiv();
     }
-
+    // TODO: Handle my own custom EE names ._.
     private static void ParseEESuffix(string eeName, out string? gender, out string? race) {
         gender = null;
         race = null;
