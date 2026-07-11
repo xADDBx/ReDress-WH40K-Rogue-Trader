@@ -1,15 +1,12 @@
 ﻿global using static ReDress.ColorPresets;
 global using static ReDress.TexturePresets;
 using HarmonyLib;
-using Kingmaker;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
-using Kingmaker.PubSubSystem.Core;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.ResourceLinks;
 using Kingmaker.Utility.UnityExtensions;
 using Kingmaker.Visual.CharacterSystem;
-using Owlcat.Runtime.Core;
-using StbDxtSharp;
 using System.Collections.Concurrent;
 using System.Reflection;
 using UnityEngine;
@@ -40,7 +37,7 @@ public static class Main {
     internal static Harmony HarmonyInstance = null!;
     internal static UnityModManager.ModEntry.ModLogger Log = null!;
     internal static Cache m_Settings => Cache.CacheInstance;
-    internal static BaseUnitEntity? PickedUnit = null;
+    internal static AbstractUnitEntity? PickedUnit = null;
 
     private static CurrentColorWindow m_CurrentMode = CurrentColorWindow.None;
     private static string m_CurrentColorSectionEE = "";
@@ -230,8 +227,10 @@ public static class Main {
                                 EntityPartStorage.Rebake(PickedUnit);
                             }
                         }
-                        if (GUILayout.Button("Open the Character Creation window for this character", AutoWidth())) {
-                            Helpers.OpenAppeareanceChanger(PickedUnit);
+                        if (PickedUnit is BaseUnitEntity baseUnit) {
+                            if (GUILayout.Button("Open the Character Creation window for this character", AutoWidth())) {
+                                Helpers.OpenAppeareanceChanger(baseUnit);
+                            }
                         }
                         DrawDiv();
 

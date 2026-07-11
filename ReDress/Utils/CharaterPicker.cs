@@ -1,11 +1,10 @@
 ﻿using Kingmaker;
 using Kingmaker.Designers;
 using Kingmaker.EntitySystem;
-using Kingmaker.EntitySystem.Entities;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.UnitLogic;
 using Kingmaker.Utility.DotNetExtensions;
-using ReDress;
+using Kingmaker.View.Covers;
 using UnityEngine;
 
 namespace ReDress;
@@ -36,7 +35,25 @@ internal static partial class CharacterListType_Localizer {
 }
 internal static partial class CharacterPicker {
     private static readonly int m_CacheDuration = 1;
-    private static readonly Dictionary<CharacterListType, TimedCache<List<BaseUnitEntity>>> m_Lists = new() {
+    private static bool IsUnitInRangeCells(AbstractUnitEntity unit, Vector3 point, int radius, bool checkLOS = true) {
+        if (unit.InRangeInCells(point, radius)) {
+            if (checkLOS) {
+                return LosCalculations.GetDirectLos(point, unit.Position);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+    private static IEnumerable<AbstractUnitEntity> GetTargetsAroundCustom(Vector3 point, int radius, bool checkLOS = true, bool includeDead = false) {
+        foreach (var unit in Game.Instance.State.AllUnits) {
+            if (IsUnitInRangeCells(unit, point, radius, false)) {
+                yield return unit;
+            }
+        }
+    }
+    private static readonly Dictionary<CharacterListType, TimedCache<IEnumerable<AbstractUnitEntity>>> m_Lists = new() {
         [CharacterListType.Party] = new(() => Game.Instance.Player.Party?.NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList() ?? [], m_CacheDuration),
         [CharacterListType.PartyAndPets] = new(() => Game.Instance.Player.PartyAndPets?.NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList() ?? [], m_CacheDuration),
         [CharacterListType.AllCharacters] = new(() => Game.Instance.Player.AllCharacters?.NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList() ?? [], m_CacheDuration),
@@ -44,8 +61,8 @@ internal static partial class CharacterPicker {
         [CharacterListType.CustomCompanions] = new(() => Game.Instance.Player.AllCharacters.Where(u => u.IsCustomCompanion())?.NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList() ?? [], m_CacheDuration),
         [CharacterListType.Nearby] = new(() => {
             var player = GameHelper.GetPlayerCharacter();
-            var result = GameHelper.GetTargetsAround(player.Position, 40, false, false)?.NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList()?? [];
-            result.Sort((BaseUnitEntity x, BaseUnitEntity y) => (int)(x.DistanceTo(GameHelper.GetPlayerCharacter()) - y.DistanceTo(GameHelper.GetPlayerCharacter())));
+            var result = GetTargetsAroundCustom(player.Position, 40, false, false)?.NotNull().Where(u => !u!.IsDisposed && !u.IsDisposingNow && u.View?.CharacterAvatar != null)?.ToList()?? [];
+            result.Sort((AbstractUnitEntity x, AbstractUnitEntity y) => (int)(x.DistanceTo(GameHelper.GetPlayerCharacter()) - y.DistanceTo(GameHelper.GetPlayerCharacter())));
             return result;
         }, m_CacheDuration),
         [CharacterListType.Friendly] = new(() => {
@@ -58,8 +75,8 @@ internal static partial class CharacterPicker {
         }, m_CacheDuration)
     };
     private static CharacterListType m_CurrentList;
-    private static WeakReference<BaseUnitEntity>? m_CurrentUnit;
-    public static BaseUnitEntity? CurrentUnit {
+    private static WeakReference<AbstractUnitEntity>? m_CurrentUnit;
+    public static AbstractUnitEntity? CurrentUnit {
         get {
             if (m_CurrentUnit is not null && m_CurrentUnit.TryGetTarget(out var unit) && !unit.IsDisposed && !unit.IsDisposingNow) {
                 return unit;
@@ -68,9 +85,9 @@ internal static partial class CharacterPicker {
             }
         }
     }
-    public static List<BaseUnitEntity> CurrentUnits {
+    public static IEnumerable<AbstractUnitEntity> CurrentUnits {
         get {
-            return m_Lists[m_CurrentList];
+            return m_Lists[m_CurrentList].Value;
         }
     }
     public static bool OnFilterPickerGUI(int? xcols = null, params GUILayoutOption[] options) {
@@ -89,7 +106,7 @@ internal static partial class CharacterPicker {
             Label("This cannot be used from Main Menu".Red());
             return false;
         }
-        var charactersList = CurrentUnits;
+        var charactersList = CurrentUnits.ToList();
         if (charactersList.Count == 0) {
             Label("There are no characters in this list".Orange(), options);
         } else {
@@ -112,8 +129,8 @@ internal static partial class CharacterPicker {
         options = options.Length == 0 ? [GUILayout.ExpandWidth(false)] : options;
         GUILayout.Label(title ?? "", options);
     }
-    private static readonly TimedCache<Dictionary<BaseUnitEntity, float>> m_DistanceToCache = new(() => []);
-    private static string GetUnitName(BaseUnitEntity? unit, bool includeId = false) {
+    private static readonly TimedCache<Dictionary<AbstractUnitEntity, float>> m_DistanceToCache = new(() => []);
+    private static string GetUnitName(AbstractUnitEntity? unit, bool includeId = false) {
         if (unit == null) {
             return "!!Null Unit!!";
         }
@@ -125,7 +142,7 @@ internal static partial class CharacterPicker {
             if (includeId) {
                 name += $" ({unit.UniqueId})";
             }
-            Dictionary<BaseUnitEntity, float> distanceCache = m_DistanceToCache;
+            Dictionary<AbstractUnitEntity, float> distanceCache = m_DistanceToCache;
             if (!distanceCache.TryGetValue(unit, out var dist)) {
                 dist = GameHelper.GetPlayerCharacter().DistanceTo(unit);
                 distanceCache[unit] = dist;

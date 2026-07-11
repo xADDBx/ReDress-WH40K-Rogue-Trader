@@ -1,6 +1,7 @@
 using Kingmaker;
 using Kingmaker.Controllers;
 using Kingmaker.EntitySystem.Entities;
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.ResourceLinks;
 using Kingmaker.Visual.CharacterSystem;
 using Owlcat.Runtime.Core.Physics.PositionBasedDynamics;
@@ -404,7 +405,7 @@ public sealed class LiveEEPreview : IDisposable {
             && (atlasSvc == null || atlasSvc.RequestsCount == 0)
             && (dxtSvc == null || dxtSvc.RequestsCount == 0);
     }
-    private bool BuildDollFor(PreviewSpec spec, BaseUnitEntity unit, Character avatar) {
+    private bool BuildDollFor(PreviewSpec spec, AbstractUnitEntity unit, Character avatar) {
         DestroyDoll();
         try {
             m_DollGo = new GameObject("ReDressPreviewDoll");
@@ -430,7 +431,9 @@ public sealed class LiveEEPreview : IDisposable {
                 DestroyDoll();
                 return false;
             }
-            m_Doll.SetSourceUnit(unit);
+            if (unit is BaseUnitEntity baseUnit) {
+                m_Doll.SetSourceUnit(baseUnit);
+            }
             m_Doll.OnStart();
             if (m_Doll.Animator != null) {
                 m_Doll.Animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;

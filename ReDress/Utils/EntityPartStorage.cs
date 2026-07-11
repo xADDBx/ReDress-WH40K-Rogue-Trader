@@ -3,6 +3,7 @@ using Kingmaker.Blueprints;
 using Kingmaker.Designers.EventConditionActionSystem.Evaluators;
 using Kingmaker.EntitySystem.Entities;
 using Kingmaker.EntitySystem.Entities.Base;
+using Kingmaker.EntitySystem.Interfaces;
 using Kingmaker.EntitySystem.Persistence;
 using Kingmaker.Mechanics.Entities;
 using Kingmaker.PubSubSystem;
@@ -11,6 +12,8 @@ using Kingmaker.ResourceLinks;
 using Kingmaker.UI.Common;
 using Kingmaker.UnitLogic.Buffs.Blueprints;
 using Kingmaker.Utility.DotNetExtensions;
+using Kingmaker.View;
+using Kingmaker.View.Mechanics.Entities;
 using Kingmaker.Visual.CharacterSystem;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -195,7 +198,7 @@ public static class EntityPartStorage {
             Main.Log.Log(ex.ToString());
         }
     }
-    public static void Unbake(BaseUnitEntity unit) {
+    public static void Unbake(AbstractUnitEntity unit) {
         var oldView = unit.View;
         var currentEEs = unit.View.CharacterAvatar.SavedEquipmentEntities.Select(l => l.Load());
 
@@ -209,7 +212,30 @@ public static class EntityPartStorage {
         unit.DetachView();
 
         unit.ViewSettings.m_CustomPrefabGuid = "4e901c9c06a71c045804730a9e934106";
-        var newView = unit.CreateView();
+        IEntityViewBase newView;
+        if (unit is BaseUnitEntity baseUnit) {
+            newView = baseUnit.CreateView();
+        } else {
+            var unitEntityView4 = ResourcesLibrary.TryGetResource<UnitEntityView>(unit.ViewSettings.PrefabGuid);
+
+            Quaternion rotation3 = (unitEntityView4.ForbidRotation ? Quaternion.identity : Quaternion.Euler(0f, unit.Orientation, 0f));
+            var unitEntityView5 = UnityEngine.Object.Instantiate(unitEntityView4, unit.Position, rotation3);
+            if (unit is LightweightUnitEntity) {
+                var viewGo = unitEntityView5.gameObject;
+                var softColliderPlaceholder = unitEntityView5.SoftColliderPlaceholder;
+                var rigidbodyController = unitEntityView5.RigidbodyController;
+                var footprints = unitEntityView5.Footprints ?? [];
+                UnityEngine.Object.DestroyImmediate(unitEntityView5);
+                var lightweightView = viewGo.AddComponent<LightweightUnitEntityView>();
+                lightweightView.SoftColliderPlaceholder = softColliderPlaceholder;
+                lightweightView.RigidbodyController = rigidbodyController;
+                lightweightView.Footprints = footprints;
+                lightweightView.Blueprint = unit.Blueprint;
+                newView = lightweightView;
+            } else {
+                newView = unitEntityView5;
+            }
+        }
         unit.AttachView(newView);
         var prefabEEs = unit.View.CharacterAvatar.EquipmentEntities?.Union(unit.View.CharacterAvatar.SavedEquipmentEntities?.Select(l => new EquipmentEntityLink() { AssetId = l.AssetId }.LoadAsset()).NotNull() ?? []) ?? [];
 
@@ -224,13 +250,13 @@ public static class EntityPartStorage {
         oldView.DestroyViewObject();
         SavePerSaveSettings();
     }
-    public static void Rebake(BaseUnitEntity unit) {
+    public static void Rebake(AbstractUnitEntity unit) {
         unit.ViewSettings.m_CustomPrefabGuid = "";
         perSave.UnbakedChars.Remove(unit.UniqueId);
         SavePerSaveSettings();
         UpdateUnit(unit);
     }
-    private static void UpdateUnit(BaseUnitEntity unit) {
+    private static void UpdateUnit(AbstractUnitEntity unit) {
         /*
         var oldView = unit.View;
         var newView = unit.ViewSettings.Instantiate(true);
