@@ -211,7 +211,7 @@ public static class EntityPartStorage {
 
         unit.DetachView();
 
-        unit.ViewSettings.m_CustomPrefabGuid = "4e901c9c06a71c045804730a9e934106";
+        unit.ViewSettings.m_CustomPrefabGuid = unit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? "4e901c9c06a71c045804730a9e934106" : "f0df7f3f33090404c9457166c5bea90b";
         IEntityViewBase newView;
         if (unit is BaseUnitEntity baseUnit) {
             newView = baseUnit.CreateView();

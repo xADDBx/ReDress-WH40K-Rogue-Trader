@@ -287,6 +287,8 @@ public sealed class LiveEEPreview : IDisposable {
         }
         if (m_DollUnitId != null && m_DollUnitId != unit.UniqueId) {
             ClearEntries();
+            DestroyDoll();
+            m_DollUnitId = null;
         }
 
         var targetKey = PickTargetKey();
