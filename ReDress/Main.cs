@@ -283,7 +283,7 @@ public static class Main {
 
                                             } else {
                                                 Log.Log($"Error trying to save job clothing for job: {Helpers.JobClothesIDs[m_SelectedOutfit]}");
-                                                EntityPartStorage.perSave.AddClothes[PickedUnit!.UniqueId] = PickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? kee.m_MaleArray.Select(f => f.AssetId).ToList() : kee.m_FemaleArray.Select(f => f.AssetId).ToList();
+                                                EntityPartStorage.perSave.AddClothes.Remove(PickedUnit!.UniqueId);
                                                 EntityPartStorage.perSave.NakedFlag.Remove(PickedUnit.UniqueId);
                                             }
                                         }
@@ -335,7 +335,7 @@ public static class Main {
                                     DrawCellGrid(excludableEEs, ee => {
                                         using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
                                             var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
-                                            m_Preview!.DrawCell(rect, $"rem:{ee.name}", PreviewSpec.Remove(ee.name));
+                                            m_Preview?.DrawCell(rect, $"rem:{ee.name}", PreviewSpec.Remove(ee.name));
                                             GUILayout.Label($"{ee.name}".Green(), Width(m_CellWidth));
                                             if (GUILayout.Button("Exclude", GUILayout.Width(m_CellWidth))) {
                                                 Exclude(ee.name);
@@ -369,7 +369,7 @@ public static class Main {
                                             using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
                                                 if (m_Settings.NameToGuid.TryGetValue(eeName, out var guid)) {
                                                     var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
-                                                    m_Preview!.DrawCell(rect, $"add:{guid}", PreviewSpec.Add(guid));
+                                                    m_Preview?.DrawCell(rect, $"add:{guid}", PreviewSpec.Add(guid));
                                                 }
                                                 GUILayout.Label($"{eeName}".Cyan(), Width(m_CellWidth));
                                                 if (GUILayout.Button("Remove Exclusion", GUILayout.Width(m_CellWidth))) {
@@ -433,7 +433,7 @@ public static class Main {
                                     GUILayout.Label("Items per page: ", AutoWidth());
                                     int pageSize = m_Settings.IncludePageSize;
                                     if (IntTextField(ref pageSize, Width(60))) {
-                                        m_Settings.IncludePageSize = Mathf.Clamp(pageSize, 1, 200);
+                                        m_Settings.IncludePageSize = Mathf.Clamp(pageSize, 1, 128);
                                         m_Settings.Save();
                                         IncludeBrowser.SetPageLimit(m_Settings.IncludePageSize);
                                     }
@@ -473,7 +473,7 @@ public static class Main {
                                         void DrawEECell(string guid) {
                                             using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
                                                 var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
-                                                m_Preview!.DrawCell(rect, $"add:{guid}", PreviewSpec.Add(guid));
+                                                m_Preview?.DrawCell(rect, $"add:{guid}", PreviewSpec.Add(guid));
 
                                                 bool isIncluded = currentIncludes?.Contains(guid) ?? false;
                                                 GUILayout.Label(isIncluded ? $"{m_Settings.AssetMapping![guid]}".Cyan() : $"{m_Settings.AssetMapping![guid]}".Green(), Width(m_CellWidth));
@@ -636,7 +636,7 @@ public static class Main {
                                             DrawCellGrid(colorPresets!.IndexPairs, pair => {
                                                 using (new GUILayout.VerticalScope(GUILayout.Width(m_CellWidth))) {
                                                     var rect = GUILayoutUtility.GetRect(m_CellWidth, m_CellWidth);
-                                                    m_Preview!.DrawCell(rect, $"ramp:{eeName}:{pair.PrimaryIndex}:{pair.SecondaryIndex}", PreviewSpec.Ramps(eeName, pair.PrimaryIndex, pair.SecondaryIndex));
+                                                    m_Preview?.DrawCell(rect, $"ramp:{eeName}:{pair.PrimaryIndex}:{pair.SecondaryIndex}", PreviewSpec.Ramps(eeName, pair.PrimaryIndex, pair.SecondaryIndex));
                                                     var pairLabel = $"{pair.Name ?? "Null Name"} - {pair.PrimaryIndex} - {pair.SecondaryIndex}";
                                                     if (maybeRampOverride != pair) {
                                                         GUILayout.Label(pairLabel, Width(m_CellWidth));
