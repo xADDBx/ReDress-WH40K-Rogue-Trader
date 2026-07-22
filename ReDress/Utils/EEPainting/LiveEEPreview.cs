@@ -52,7 +52,7 @@ public sealed class PreviewSpec {
 
 public sealed class LiveEEPreview : IDisposable {
     public const int LiveSize = 1024;
-    public const int SnapshotSize = 384;
+    public const int SnapshotSize = 512;
     // If flickering or something else occurs then this is probably the cause (because cells get evicted)
     public static int MaxSnapshots => Math.Max(128, Main.m_Settings.IncludePageSize + 100);
     public const float Fov = 30f;

@@ -26,6 +26,8 @@ namespace ReDress;
 public static class Patches {
     private static bool m_IsCurrentlyLoadingGame = false;
     private static string? m_CurrentUid;
+    [ThreadStatic]
+    private static Character? m_CharacterBeingUpdated;
     private static (EntityPartStorage.CustomColorTex?, EntityPartStorage.CustomColorTex?, EntityPartStorage.CustomColorTex?) m_CustomOverride = (null, null, null);
     private static bool m_IsPreviewCharacter = false;
     private static Dictionary<string, HashSet<EquipmentEntity>> m_CachedLinks = new();
@@ -151,6 +153,49 @@ public static class Patches {
 
         if (toExclude.Contains(bodyPart.GetBodyPartMapping()!)) {
             __result = true;
+        }
+    }
+    [HarmonyPatch(typeof(Character), nameof(Character.UpdateCharacter)), HarmonyPrefix]
+    private static void Character_UpdateCharacter_Pre(Character __instance) {
+        m_CharacterBeingUpdated = __instance;
+    }
+    [HarmonyPatch(typeof(Character), nameof(Character.UpdateCharacter)), HarmonyFinalizer]
+    private static void Character_UpdateCharacter_Fin() {
+        m_CharacterBeingUpdated = null;
+    }
+    // A leg augmentation auto-hides the character's natural Feet/KneeCops/LowerLegs so the mechanical leg can replace them.
+    // Recompute the mask skipping any augment parts ReDress is hiding so the natural leg reappears.
+    private const BodyPartType LegAutoHideGroup = BodyPartType.Feet | BodyPartType.KneeCops | BodyPartType.LowerLegs;
+    [HarmonyPatch(typeof(Character), nameof(Character.ComputeAugmentAutoHideMask)), HarmonyPostfix]
+    private static void Character_ComputeAugmentAutoHideMask_Patch(EquipmentEntity aug, ref BodyPartType __result) {
+        var c = m_CharacterBeingUpdated;
+        if (c == null || aug == null || __result == (BodyPartType)0L) {
+            return;
+        }
+        var uid = Helpers.GetUIdFromCharacter(c);
+        if (string.IsNullOrEmpty(uid)) {
+            return;
+        }
+        var eeName = aug.name ?? aug.ToString();
+        if (string.IsNullOrEmpty(eeName)) {
+            return;
+        }
+        if (EntityPartStorage.perSave.ExcludeByName.TryGetValue(uid!, out var wholeExcluded) && wholeExcluded.Contains(eeName)) {
+            __result = (BodyPartType)0L;
+            return;
+        }
+        if (!EntityPartStorage.perSave.ExcludeBodyPartByName.TryGetValue(uid!, out var overrides) || !overrides.TryGetValue(eeName, out var hiddenParts) || hiddenParts.Count == 0) {
+            return;
+        }
+        var exclude = false;
+        foreach (var bodyPart in aug.BodyParts) {
+            if (hiddenParts.Contains(bodyPart.GetBodyPartMapping()!)) {
+                __result &= ~bodyPart.Type;
+                exclude = true;
+            }
+        }
+        if (exclude) {
+            __result &= ~BodyPartType.Feet & ~BodyPartType.KneeCops & ~BodyPartType.LowerLegs;
         }
     }
     [HarmonyPatch(typeof(EquipmentEntity), nameof(EquipmentEntity.RepaintTextures), [typeof(EquipmentEntity.PaintedTextures), typeof(int), typeof(int)]), HarmonyTranspiler]
