@@ -283,7 +283,7 @@ public static class Main {
 
                                             } else {
                                                 Log.Log($"Error trying to save job clothing for job: {Helpers.JobClothesIDs[m_SelectedOutfit]}");
-                                                EntityPartStorage.perSave.AddClothes.Remove(PickedUnit!.UniqueId);
+                                                EntityPartStorage.perSave.AddClothes[PickedUnit!.UniqueId] = PickedUnit.Gender == Kingmaker.Blueprints.Base.Gender.Male ? [.. kee.m_MaleArray.Select(f => f.AssetId)] : [.. kee.m_FemaleArray.Select(f => f.AssetId)];
                                                 EntityPartStorage.perSave.NakedFlag.Remove(PickedUnit.UniqueId);
                                             }
                                         }
