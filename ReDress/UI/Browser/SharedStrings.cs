@@ -1,6 +1,4 @@
-﻿using Kingmaker.Localization;
-
-namespace ReDress;
+﻿namespace ReDress;
 internal class SharedStrings {
     public static string ShowingText => "Showing";
     public static string ResultsText => "results";

@@ -1,5 +1,6 @@
 ﻿global using static ReDress.ColorPresets;
 global using static ReDress.TexturePresets;
+global using static ReDress.OutfitPresets;
 using HarmonyLib;
 using Kingmaker.Blueprints;
 using Kingmaker.EntitySystem.Entities;
@@ -52,6 +53,8 @@ public static class Main {
     private static bool m_OpenedColorSection = false;
     private static bool m_OpenedClothingSets = false;
     private static bool m_OpenedBodyPartSection = false;
+    private static bool m_OpenedOutfitPresets = false;
+    private static string m_NewPresetName = "";
     internal static CustomTexCreator? PrimaryTexCreator;
     internal static CustomTexCreator? SecondaryTexCreator;
     internal static Browser<string> IncludeBrowser = null!;
@@ -69,7 +72,7 @@ public static class Main {
         modEntry.OnGUI = OnGUI;
         modEntry.OnHideGUI = OnHideGUI;
         modEntry.OnUpdate = OnUpdate;
-        IncludeBrowser = new(s => $"{m_Settings.AssetMapping![s]} {s}", s => $"{m_Settings.AssetMapping![s]} {s}", null, (Action<IEnumerable<string>> a) => {
+        IncludeBrowser = new(s => m_Settings.AssetMapping!.TryGetValue(s, out var n) ? $"{n} {s}" : s, s => m_Settings.AssetMapping!.TryGetValue(s, out var n) ? $"{n} {s}" : s, null, (Action<IEnumerable<string>> a) => {
             a(m_Settings.AssetMapping!.Keys);
         }, false, (int)m_BrowserWidth, Math.Max(1, m_Settings.IncludePageSize));
         IncludeBrowser.ItemFilter = PassesEEFilters;
@@ -198,8 +201,8 @@ public static class Main {
                 DrawDiv();
                 CharacterPicker.OnFilterPickerGUI(null, GUILayout.Width(0.98f * UnityModManager.Params.WindowWidth));
                 DrawDiv();
-                var changed = CharacterPicker.OnCharacterPickerGUI(null, GUILayout.Width(0.98f * UnityModManager.Params.WindowWidth));
                 GUILayout.Label("Pick the character you want to modify:");
+                var changed = CharacterPicker.OnCharacterPickerGUI(null, GUILayout.Width(0.98f * UnityModManager.Params.WindowWidth));
                 Space(5);
                 if (changed) {
                     PickedUnit = CharacterPicker.CurrentUnit;
@@ -239,11 +242,13 @@ public static class Main {
                         ColorGUI();
 
                         BodyPartGUI();
+
+                        OutfitPresetGUI();
                     }
                 } else {
                     GUILayout.Label("Please pick a unit to modify first!".Green(), AutoWidth());
                 }
-                if (GUILayout.Button("Force Refresh EE Cache", AutoWidth())) {
+                if (GUILayout.Button("Force Refresh EE Cache (Needs Restart!)", AutoWidth())) {
                     Cache.RebuildCache();
                 }
             } catch (Exception ex) {
@@ -255,6 +260,7 @@ public static class Main {
                 m_OpenedClothingSection = false;
                 m_OpenedColorSection = false;
                 m_OpenedClothingSets = false;
+                m_OpenedOutfitPresets = false;
                 m_Error = ex;
             }
         }
@@ -476,7 +482,8 @@ public static class Main {
                                                 m_Preview?.DrawCell(rect, $"add:{guid}", PreviewSpec.Add(guid));
 
                                                 bool isIncluded = currentIncludes?.Contains(guid) ?? false;
-                                                GUILayout.Label(isIncluded ? $"{m_Settings.AssetMapping![guid]}".Cyan() : $"{m_Settings.AssetMapping![guid]}".Green(), Width(m_CellWidth));
+                                                var cellName = m_Settings.AssetMapping!.TryGetValue(guid, out var mappedName) ? mappedName : guid;
+                                                GUILayout.Label(isIncluded ? cellName.Cyan() : cellName.Green(), Width(m_CellWidth));
                                                 if (GUILayout.Button(isIncluded ? "Remove" : "Include", GUILayout.Width(m_CellWidth))) {
                                                     ToggleInclude(guid, isIncluded);
                                                 }
@@ -734,6 +741,69 @@ public static class Main {
                             }
                         }
                         Space(5);
+                    }
+                }
+            }
+        }
+
+        DrawDiv();
+    }
+
+    private static void OutfitPresetGUI() {
+        DisclosureToggle(ref m_OpenedOutfitPresets, "Show Outfit Presets Section", AutoWidth());
+
+        if (m_OpenedOutfitPresets) {
+            using (HorizontalScope()) {
+                GUILayout.Space(25);
+                using (VerticalScope()) {
+                    GUILayout.Label("Presets store the complete ReDress configuration of a character (origin outfit, includes, excludes, colors and body part exclusions) under a name.".Green(), AutoWidth());
+                    GUILayout.Label("They are shared across saves. Each preset is its own file in the folder below; to share presets with others (or import theirs), exchange those files and press Reload.".Green(), AutoWidth());
+                    using (HorizontalScope()) {
+                        GUILayout.TextArea(SavedOutfitPresets.GetFolderPath(), AutoWidth());
+                        Space(10);
+                        if (GUILayout.Button("Reload Presets From Folder", AutoWidth())) {
+                            SavedOutfitPresets.Reload();
+                        }
+                    }
+                    Space(5);
+                    using (HorizontalScope()) {
+                        GUILayout.Label("Preset Name: ", AutoWidth());
+                        m_NewPresetName = GUILayout.TextField(m_NewPresetName, Width(250));
+                        Space(10);
+                        var trimmedName = m_NewPresetName.Trim();
+                        var isOverwrite = SavedOutfitPresets.Presets.Any(p => p.Name == trimmedName);
+                        if (GUILayout.Button(isOverwrite ? "Overwrite Preset With Current Look" : "Save Current Look As Preset", AutoWidth()) && !string.IsNullOrEmpty(trimmedName)) {
+                            var existing = SavedOutfitPresets.Presets.FirstOrDefault(p => p.Name == trimmedName);
+                            if (existing != null) {
+                                SavedOutfitPresets.Delete(existing);
+                            }
+                            SavedOutfitPresets.Save(OutfitPreset.Capture(PickedUnit!.UniqueId, trimmedName));
+                            m_NewPresetName = "";
+                        }
+                    }
+                    if (SavedOutfitPresets.Presets.Count > 0) {
+                        Space(5);
+                        var width = CalculateLargestLabelSize(SavedOutfitPresets.Presets.Select(p => p.Name));
+                        foreach (var preset in SavedOutfitPresets.Presets.ToList()) {
+                            using (HorizontalScope()) {
+                                GUILayout.Label(preset.Name.Cyan(), Width(width));
+                                Space(10);
+                                if (GUILayout.Button("Apply", AutoWidth())) {
+                                    preset.ApplyTo(PickedUnit!.UniqueId);
+                                    EntityPartStorage.perSave.IncludeByName.TryGetValue(PickedUnit.UniqueId, out var includes);
+                                    IncludeBrowser.QueueUpdateItems(includes ?? []);
+                                }
+                                Space(10);
+                                if (GUILayout.Button("Delete", AutoWidth())) {
+                                    SavedOutfitPresets.Delete(preset);
+                                }
+                                Space(10);
+                                GUILayout.Label(Path.GetFileName(preset.SourceFile ?? "").Green(), AutoWidth());
+                            }
+                        }
+                        GUILayout.Label("Note: A preset saved from one character can look different (or reference gender/race specific pieces that won't fit) when applied to another character.".Orange(), AutoWidth());
+                    } else {
+                        GUILayout.Label("No presets saved yet.".Green(), AutoWidth());
                     }
                 }
             }

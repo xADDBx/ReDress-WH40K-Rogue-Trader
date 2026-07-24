@@ -82,16 +82,14 @@ public class Browser<T> : VerticalList<T> where T : notnull {
         Searcher = new(this);
     }
     internal override void UpdateItems(IEnumerable<T> newItems, int? forcePage = null, bool onlyDisplayedItems = false) {
-        if (!onlyDisplayedItems) {
-            UnsearchedItems = newItems;
+        if (onlyDisplayedItems) {
+            base.UpdateItems(newItems, forcePage);
+            return;
         }
+        UnsearchedItems = newItems;
         if (!ShowAll) {
             base.UpdateItems(newItems, forcePage);
             RedoSearch();
-        } else {
-            if (onlyDisplayedItems) {
-                base.UpdateItems(newItems, forcePage);
-            }
         }
     }
     public void RedoSearch() => StartNewSearch(CurrentSearchString, true);

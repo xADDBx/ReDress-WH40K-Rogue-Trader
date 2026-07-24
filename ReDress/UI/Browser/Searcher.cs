@@ -43,7 +43,7 @@ public class ThreadedListSearcher<T> where T : notnull {
                             IsRunning = false;
                             cts.Dispose();
                         }
-                        m_Parent.QueueUpdateItems(allResults.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount).OrderBy(getSortKey).ToArray(), 1);
+                        m_Parent.QueueUpdateItems(allResults.AsParallel().WithDegreeOfParallelism(Environment.ProcessorCount).OrderBy(getSortKey).ToArray(), 1, true);
                         return;
                     }
                     var text = getSearchKey(item).ToUpper();
@@ -55,7 +55,7 @@ public class ThreadedListSearcher<T> where T : notnull {
                             lastShared = CurrentlyFound;
                             m_LastSharedResults = Time.time;
                             Main.ScheduleForMainThread(() => {
-                                m_Parent.UpdateItems([.. m_InProgress], 1);
+                                m_Parent.UpdateItems([.. m_InProgress], 1, true);
                             });
                         }
                     }
