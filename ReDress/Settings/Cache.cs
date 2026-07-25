@@ -14,6 +14,7 @@ internal class Cache : AbstractSettings {
     public bool UseLivePreviews = true;
     public int PreviewCellsPerRow = 4;
     public int IncludePageSize = 16;
+    public bool ShowAllPresets = false;
     public float SearchDelay = 0.3f;
     public string CachedVersion = "";
     public Dictionary<string, string> BaseGameEEs = [];

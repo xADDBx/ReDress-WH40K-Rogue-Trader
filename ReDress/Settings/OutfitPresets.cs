@@ -1,3 +1,4 @@
+using Kingmaker.Mechanics.Entities;
 using Kingmaker.Visual.CharacterSystem;
 using Newtonsoft.Json;
 
@@ -9,6 +10,10 @@ public class OutfitPreset {
     public string Id = Guid.NewGuid().ToString("N");
     [JsonProperty]
     public string Name = "";
+    [JsonProperty]
+    public string? CreatorName;
+    [JsonProperty]
+    public string? CreatorId;
     [JsonProperty]
     public List<string>? AddClothes;
     [JsonProperty]
@@ -24,10 +29,13 @@ public class OutfitPreset {
     [JsonProperty]
     public bool Naked;
 
-    public static OutfitPreset Capture(string uid, string name) {
+    public static OutfitPreset Capture(AbstractUnitEntity unit, string name) {
+        var uid = unit.UniqueId;
         var perSave = EntityPartStorage.perSave;
         var preset = new OutfitPreset {
             Name = name,
+            CreatorName = unit.CharacterName,
+            CreatorId = uid,
             AddClothes = perSave.AddClothes.TryGetValue(uid, out var addClothes) ? addClothes : null,
             Excludes = perSave.ExcludeByName.TryGetValue(uid, out var excludes) ? excludes : null,
             BodyPartExcludes = perSave.ExcludeBodyPartByName.TryGetValue(uid, out var bodyParts) ? bodyParts : null,

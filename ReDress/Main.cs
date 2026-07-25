@@ -766,27 +766,39 @@ public static class Main {
                         }
                     }
                     Space(5);
+                    var newShowAllPresets = GUILayout.Toggle(m_Settings.ShowAllPresets, " Show All Presets (off: only presets created for the currently picked character)".Orange(), AutoWidth());
+                    if (newShowAllPresets != m_Settings.ShowAllPresets) {
+                        m_Settings.ShowAllPresets = newShowAllPresets;
+                        m_Settings.Save();
+                    }
+                    var visiblePresets = m_Settings.ShowAllPresets ? SavedOutfitPresets.Presets.ToList() : [.. SavedOutfitPresets.Presets.Where(p => p.CreatorId == null || p.CreatorId == PickedUnit!.UniqueId)];
+                    Space(5);
                     using (HorizontalScope()) {
                         GUILayout.Label("Preset Name: ", AutoWidth());
                         m_NewPresetName = GUILayout.TextField(m_NewPresetName, Width(250));
                         Space(10);
                         var trimmedName = m_NewPresetName.Trim();
-                        var isOverwrite = SavedOutfitPresets.Presets.Any(p => p.Name == trimmedName);
+                        var isOverwrite = visiblePresets.Any(p => p.Name == trimmedName);
                         if (GUILayout.Button(isOverwrite ? "Overwrite Preset With Current Look" : "Save Current Look As Preset", AutoWidth()) && !string.IsNullOrEmpty(trimmedName)) {
-                            var existing = SavedOutfitPresets.Presets.FirstOrDefault(p => p.Name == trimmedName);
+                            var existing = visiblePresets.FirstOrDefault(p => p.Name == trimmedName);
                             if (existing != null) {
                                 SavedOutfitPresets.Delete(existing);
                             }
-                            SavedOutfitPresets.Save(OutfitPreset.Capture(PickedUnit!.UniqueId, trimmedName));
+                            SavedOutfitPresets.Save(OutfitPreset.Capture(PickedUnit!, trimmedName));
                             m_NewPresetName = "";
                         }
                     }
-                    if (SavedOutfitPresets.Presets.Count > 0) {
+                    if (visiblePresets.Count > 0) {
                         Space(5);
-                        var width = CalculateLargestLabelSize(SavedOutfitPresets.Presets.Select(p => p.Name));
-                        foreach (var preset in SavedOutfitPresets.Presets.ToList()) {
+                        string ToLabel(OutfitPreset preset) {
+                            return preset.Name + (!string.IsNullOrEmpty(preset.CreatorName)
+                                ? " (Created on: " + preset.CreatorName + ")"
+                                : "");
+                        }
+                        var width = CalculateLargestLabelSize(visiblePresets.Select(p => ToLabel(p) + "   "));
+                        foreach (var preset in visiblePresets) {
                             using (HorizontalScope()) {
-                                GUILayout.Label(preset.Name.Cyan(), Width(width));
+                                GUILayout.Label(ToLabel(preset).Cyan(), Width(width));
                                 Space(10);
                                 if (GUILayout.Button("Apply", AutoWidth())) {
                                     preset.ApplyTo(PickedUnit!.UniqueId);
@@ -802,6 +814,8 @@ public static class Main {
                             }
                         }
                         GUILayout.Label("Note: A preset saved from one character can look different (or reference gender/race specific pieces that won't fit) when applied to another character.".Orange(), AutoWidth());
+                    } else if (SavedOutfitPresets.Presets.Count > 0) {
+                        GUILayout.Label("No presets saved for this character yet.".Green(), AutoWidth());
                     } else {
                         GUILayout.Label("No presets saved yet.".Green(), AutoWidth());
                     }
